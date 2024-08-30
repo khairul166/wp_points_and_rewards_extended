@@ -1,0 +1,106 @@
+.hidden {
+    display: none;
+}
+/* Spinner Container */
+#apply-points-spinner {
+    /* display: inline-block; */
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 9999;
+    width: 64px;
+    height: 64px;
+}
+
+#apply-points-spinner div {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: #333;
+    border-radius: 50%;
+    animation: apply-points-spinner 1.2s linear infinite;
+}
+
+#apply-points-spinner div:nth-child(1) {
+    top: 29px;
+    left: 53px;
+    animation-delay: -0.036s;
+}
+#apply-points-spinner div:nth-child(2) {
+    top: 18px;
+    left: 50px;
+    animation-delay: -0.072s;
+}
+#apply-points-spinner div:nth-child(3) {
+    top: 9px;
+    left: 42px;
+    animation-delay: -0.108s;
+}
+#apply-points-spinner div:nth-child(4) {
+    top: 6px;
+    left: 29px;
+    animation-delay: -0.144s;
+}
+#apply-points-spinner div:nth-child(5) {
+    top: 9px;
+    left: 16px;
+    animation-delay: -0.18s;
+}
+#apply-points-spinner div:nth-child(6) {
+    top: 18px;
+    left: 8px;
+    animation-delay: -0.216s;
+}
+#apply-points-spinner div:nth-child(7) {
+    top: 29px;
+    left: 5px;
+    animation-delay: -0.252s;
+}
+#apply-points-spinner div:nth-child(8) {
+    top: 41px;
+    left: 8px;
+    animation-delay: -0.288s;
+}
+#apply-points-spinner div:nth-child(9) {
+    top: 50px;
+    left: 16px;
+    animation-delay: -0.324s;
+}
+#apply-points-spinner div:nth-child(10) {
+    top: 53px;
+    left: 29px;
+    animation-delay: -0.36s;
+}
+#apply-points-spinner div:nth-child(11) {
+    top: 50px;
+    left: 42px;
+    animation-delay: -0.396s;
+}
+#apply-points-spinner div:nth-child(12) {
+    top: 41px;
+    left: 50px;
+    animation-delay: -0.432s;
+}
+
+@keyframes apply-points-spinner {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.3;
+    }
+}
+
+/* White overlay */
+#overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.6);
+    z-index: 9998;
+    display: none;
+}
