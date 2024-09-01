@@ -60,3 +60,15 @@ function custom_enqueue_scripts()
     );
 }
 add_action('wp_enqueue_scripts', 'custom_enqueue_scripts');
+
+
+function enqueue_my_custom_scripts() {
+    wp_enqueue_script('custom-script', get_template_directory_uri() . '/js/custom-script.js', array('jquery'), '1.0', true);
+
+    // Create the nonce and pass it to the JavaScript
+    wp_localize_script('custom-script', 'custom_script_params', array(
+        'ajax_url' => admin_url('admin-ajax.php'),
+        'nonce'    => wp_create_nonce('apply_points_nonce')
+    ));
+}
+add_action('wp_enqueue_scripts', 'enqueue_my_custom_scripts');

@@ -2,6 +2,18 @@
 
 require_once(get_template_directory() . '/reward-point/custom-point-adjustment.php');
 require_once(get_template_directory() . '/reward-point/enque.php');
+
+// Start session if not already started
+function start_session() {
+    if (!session_id()) {
+        session_start();
+    }
+}
+add_action('init', 'start_session', 1);
+
+
+
+
 // Function to send an email and return JSON response
 function send_email_callback()
 {
@@ -1619,7 +1631,6 @@ function display_discount_on_cart($cart)
 add_action('woocommerce_cart_calculate_fees', 'display_discount_on_cart');
 
 
-
 function apply_points_redemption()
 {
     $point_redemption = get_option('point_redemption', 0);
@@ -1644,7 +1655,7 @@ function apply_points_redemption()
             $updated_points = $current_points - $points;
             update_user_meta($user_id, 'points', $updated_points);
 
-            add_point_log_entry($user_id, -$points, 'redeem');
+            //add_point_log_entry($user_id, -$points, 'redeem');
 
             // Calculate the discount amount for the current points being applied
             $discount_amount_for_current_points = $points * $point_conversion_rate_taka;
@@ -1696,6 +1707,19 @@ function apply_points_redemption()
 
 add_action('wp_ajax_apply_points_redemption', 'apply_points_redemption');
 add_action('wp_ajax_nopriv_apply_points_redemption', 'apply_points_redemption');
+
+
+//deduct Points on order recive page
+function points_redeem_after_order($order_id){
+    $user_id = get_current_user_id();
+    $order = wc_get_order($order_id);
+
+            $total_points_applied= WC()->session->get('points_redemption_discount');
+
+            add_point_log_entry($user_id, -$total_points_applied, 'redeem', '',$order_id);
+            echo "you points deduct: ".$total_points_applied;
+}
+add_action('woocommerce_thankyou', 'points_redeem_after_order', 10, 2);
 
 
 function display_points_redemption_option($discount_amount = 0)
@@ -2081,6 +2105,6 @@ add_action('user_register', 'apply_referral_bonus_points');
 
 
 
-// fgfjhfdhg
+
 
 ?>
