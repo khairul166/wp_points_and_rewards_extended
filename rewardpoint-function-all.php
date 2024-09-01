@@ -301,7 +301,7 @@ function points_rewards_submenu_callback()
                     } elseif ($point_source === 'admin_adjustment') {
                         $point_source_text = 'Point Adjusted by Admin ' . $reason;
                     } elseif ($point_source === 'redeem') {
-                        $point_source_text = 'Deducted for Redeeming';
+                        $point_source_text = 'Deducted for Redeeming <a href="'.$view_order_url . '">#' . $log_order_id . '</a>';
                     } elseif ($point_source === 'signup_bonus'){
                         $point_source_text= 'Signup Bonus';
                     } elseif ($point_source === 'signup_ref'){
@@ -988,10 +988,10 @@ function points_page_content()
     $total_points = calculate_total_user_points($user_id);
     echo '<p>Your current points balance: ' . esc_html($total_points) . '</p>';
 
-    echo '<h2>Last 20 Point Logs</h2>';
+    echo '<h2>Last 50 Point Logs</h2>';
 
     // Pagination variables
-    $per_page = 20;
+    $per_page = 50;
     $current_page = isset($_GET['paged']) ? absint($_GET['paged']) : 1;
     $offset = ($current_page - 1) * $per_page;
 
@@ -1046,7 +1046,7 @@ function points_page_content()
                     $point_source_text = 'for' . $log_reason;
                 }
             } elseif ($point_source === 'redeem') {
-                $point_source_text = 'Deducted for Redeeming';
+                $point_source_text = 'Deducted for Redeeming <a href="'.$view_order_url . '">#' . $log_order_id . '</a>';
             } elseif ($point_source === 'signup_bonus'){
                 $point_source_text= 'Signup Bonus';
             } elseif ($point_source === 'signup_ref'){
@@ -1168,7 +1168,7 @@ function points_page_callback()
             } elseif ($point_source === 'admin_adjustment') {
                 $point_source_text = 'Point Adjusted by Admin';
             } elseif ($point_source === 'redeem') {
-                $point_source_text = 'Deducted for Redeeming';
+                $point_source_text = 'Deducted for Redeeming <a href="'.$view_order_url . '">#' . $log_order_id . '</a>';
             } elseif ($point_source === 'signup_bonus'){
                 $point_source_text= 'Signup Bonus';
             } elseif ($point_source === 'signup_ref'){
@@ -1428,7 +1428,7 @@ function display_point_log_shortcode()
                 } elseif ($point_source === 'admin_adjustment') {
                     $point_source_text = 'Point Adjusted by Admin ' . $log_reason;
                 } elseif ($point_source === 'redeem') {
-                    $point_source_text = 'Deducted for Redeeming';
+                    $point_source_text = 'Deducted for Redeeming <a href="'.$view_order_url . '">#' . $log_order_id . '</a>';
                 } elseif ($point_source === 'signup_bonus'){
                     $point_source_text= 'Signup Bonus';
                 } 
@@ -1441,9 +1441,6 @@ function display_point_log_shortcode()
                 echo '<td>' . esc_html($log->points) . '</td>';
                 echo '</tr>';
             }
-            // $user_id = get_current_user_id();
-            // $total_points = calculate_total_user_points($user_id);
-            // echo '<tr><th>Total</th><th></th><th>' . esc_html($total_points) . ' </th></tr>';
             echo '</table>';
         }
         return ob_get_clean();
@@ -1717,7 +1714,6 @@ function points_redeem_after_order($order_id){
             $total_points_applied= WC()->session->get('points_redemption_discount');
 
             add_point_log_entry($user_id, -$total_points_applied, 'redeem', '',$order_id);
-            echo "you points deduct: ".$total_points_applied;
 }
 add_action('woocommerce_thankyou', 'points_redeem_after_order', 10, 2);
 
