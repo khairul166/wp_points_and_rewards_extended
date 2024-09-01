@@ -85,3 +85,16 @@ jQuery(document).ready(function ($) {
         localStorage.removeItem('totalPointsApplied');
     });
 });
+
+jQuery(document).ready(function ($) {
+    var feeRow = document.querySelector('tr.fee');
+    if(feeRow){
+      var feeamttext = feeRow.querySelector('.woocommerce-Price-amount').textContent.replace(/[^\d.]/g, '');
+    
+      pointsRedemptionAmountElement =  parseFloat(feeamttext.replace(',', ''));
+      
+         if (isNaN(pointsRedemptionAmountElement) || pointsRedemptionAmountElement === 0) {
+              $('.fee').hide();
+          }
+    }
+  });

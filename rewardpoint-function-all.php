@@ -1707,13 +1707,16 @@ add_action('wp_ajax_nopriv_apply_points_redemption', 'apply_points_redemption');
 
 
 //deduct Points on order recive page
-function points_redeem_after_order($order_id){
+function points_redeem_after_order($order_id)
+{
     $user_id = get_current_user_id();
     $order = wc_get_order($order_id);
 
-            $total_points_applied= WC()->session->get('points_redemption_discount');
-
-            add_point_log_entry($user_id, -$total_points_applied, 'redeem', '',$order_id);
+    $total_points_applied = WC()->session->get('points_redemption_discount');
+    if($total_points_applied !=0){
+        add_point_log_entry($user_id, -$total_points_applied, 'redeem', '', $order_id);
+    }
+    
 }
 add_action('woocommerce_thankyou', 'points_redeem_after_order', 10, 2);
 
