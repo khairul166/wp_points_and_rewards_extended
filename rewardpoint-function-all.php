@@ -843,10 +843,13 @@ function handle_points_for_purchase($order_id)
         }
 
         // Calculate the points earned for the purchase
-        $points = calculate_points_for_purchase($order_id);
+        $points = round(calculate_points_for_purchase($order_id));
 
         // Save the points to the custom table
-        add_point_log_entry($user_id, $points, 'purchase', '', $order_id);
+        if($points !=0){
+            add_point_log_entry($user_id, $points, 'purchase', '', $order_id);
+        }
+        
 
         // Mark the points as saved for this order
         update_post_meta($order_id, '_points_saved', true);
