@@ -295,13 +295,16 @@ function points_rewards_submenu_callback()
                     } else {
                         $reason = 'for ' . $reason;
                     }
-
+                    $log_order_id = $log->order_id;
+                    $order = wc_get_order($log_order_id);
+                    $view_order_url = admin_url('post.php?post=' . $log_order_id . '&action=edit');
                     if ($point_source === 'purchase') {
-                        $point_source_text = 'Earned for Purchase';
+                        $point_source_text = 'Earned for Purchase <a href="'.$view_order_url . '">#' . $log_order_id . '</a>';
                     } elseif ($point_source === 'admin_adjustment') {
                         $point_source_text = 'Point Adjusted by Admin ' . $reason;
                     } elseif ($point_source === 'redeem') {
                         $point_source_text = 'Deducted for Redeeming <a href="'.$view_order_url . '">#' . $log_order_id . '</a>';
+                    
                     } elseif ($point_source === 'signup_bonus'){
                         $point_source_text= 'Signup Bonus';
                     } elseif ($point_source === 'signup_ref'){
@@ -322,7 +325,7 @@ function points_rewards_submenu_callback()
                     echo '<td><a href="' . esc_url(get_edit_user_link($log->user_id)) . '">' . esc_html($user_login) . '</a></td>';
                     echo '<td>' . esc_html($display_name) . '</td>';
                     echo '<td>' . esc_html($user_roles_text) . '</td>';
-                    echo '<td>' . esc_html($point_source_text) . '</td>';
+                    echo '<td>' . $point_source_text . '</td>';
                     echo '<td>' . esc_html($human_date) . '</td>';
                     echo '<td>' . esc_html($log->points) . '</td>';
                     echo '</tr>';
@@ -1166,6 +1169,9 @@ function points_page_callback()
 
             //define the point source
             $point_source = $log->point_source;
+            $log_order_id = $log->order_id;
+            $my_account_permalink = get_permalink(get_option('woocommerce_myaccount_page_id'));
+            $view_order_url = $my_account_permalink . 'view-order/' . $log_order_id . '/';
             if ($point_source === 'purchase') {
                 $point_source_text = 'Earned for Purchase';
             } elseif ($point_source === 'admin_adjustment') {
@@ -1426,8 +1432,11 @@ function display_point_log_shortcode()
                 //define the point source
                 $point_source = $log->point_source;
                 $log_reason = $log->reason;
+                $log_order_id=$log->order_id;
+                $order = wc_get_order($log_order_id);
+                $view_order_url = $order->get_view_order_url();
                 if ($point_source === 'purchase') {
-                    $point_source_text = 'Earned for Purchase';
+                    $point_source_text = 'Earned for Purchase <a href="'.$view_order_url . '">#' . $log_order_id . '</a>';
                 } elseif ($point_source === 'admin_adjustment') {
                     $point_source_text = 'Point Adjusted by Admin ' . $log_reason;
                 } elseif ($point_source === 'redeem') {
@@ -1439,7 +1448,7 @@ function display_point_log_shortcode()
                     $point_source_text = 'Unknown Source';
                 }
                 echo '<tr>';
-                echo '<td>' . esc_html($point_source_text) . '</td>';
+                echo '<td>' . $point_source_text . '</td>';
                 echo '<td>' . esc_html($human_date) . '</td>';
                 echo '<td>' . esc_html($log->points) . '</td>';
                 echo '</tr>';
