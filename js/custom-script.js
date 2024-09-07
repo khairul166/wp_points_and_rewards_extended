@@ -34,11 +34,16 @@ jQuery(document).ready(function ($) {
                 $('.points-earned td').html(pointsEarned + ' Points');
 
 
-                if (response.points_redemption_amount === 0) {
-                    $('.fee').hide();
+                var adddiscountAmount = parseFloat(discountAmount.replace(/[^\d.-]/g, ''));
+
+                console.log('add discount: ' + adddiscountAmount); 
+                
+                if (adddiscountAmount === 0 || isNaN(adddiscountAmount)) {
+                    $('.fee').hide(); // Hide the .fee row if adddiscountAmount is 0 or NaN
                 } else {
-                    $('.fee').show();
+                    $('.fee').show(); // Show the .fee row if adddiscountAmount is not 0
                 }
+                
 
                 // Trigger the cart recalculation
                 $('body').trigger('update_checkout');
@@ -60,55 +65,48 @@ jQuery(document).ready(function ($) {
         });
     }
 
-   // Function to remove points redemption
-function removePointsRedemption() {
-    totalPointsApplied = 0; // Reset the applied points
-    localStorage.removeItem('totalPointsApplied'); // Clear the localStorage
+    // Function to remove points redemption
+    function removePointsRedemption() {
+        totalPointsApplied = 0; // Reset the applied points
+        localStorage.removeItem('totalPointsApplied'); // Clear the localStorage
 
-    var data = {
-        action: 'apply_points_redemption',
-        nonce: custom_script_params.nonce,
-        points: 0, // Reset points on the server
-        update_cart_only: true // Flag to indicate cart update without deduction
-    };
+        var data = {
+            action: 'apply_points_redemption',
+            nonce: custom_script_params.nonce,
+            points: 0, // Reset points on the server
+            update_cart_only: true // Flag to indicate cart update without deduction
+        };
 
-    $('#apply-points-spinner').removeClass('hidden');
-    $('#overlay').show();
+        $('#apply-points-spinner').removeClass('hidden');
+        $('#overlay').show();
 
-    // Send the AJAX request to remove points
-    $.post(custom_script_params.ajax_url, data, function (response) {
-        $('#apply-points-spinner').addClass('hidden');
-        $('#overlay').hide();
-        if (response.success) {
-            // Update the cart totals and discount amount
-            $('.fee td').html('-' + response.discount_amount);
-            $('.order-total td').html(response.total_amount);
-            $('.points-earned td').html(response.points_earned + ' Points');
+        // Send the AJAX request to remove points
+        $.post(custom_script_params.ajax_url, data, function (response) {
+            $('#apply-points-spinner').addClass('hidden');
+            $('#overlay').hide();
+            if (response.success) {
+                // Update the cart totals and discount amount
+                $('.fee td').html(response.discount_amount + ' <a href="#" class="remove-points">[remove]</a>');
+                $('.order-total td').html(response.total_amount);
+                $('.points-earned td').html(response.points_earned + ' Points');
+                   
+                   var remdiscountAmount = parseFloat(response.discount_amount.replace(/[^\d.-]/g, ''));
+                   console.log('remdiscountAmount: ' + remdiscountAmount); 
+                if (remdiscountAmount === 0 || isNaN(remdiscountAmount)) {
+                    $('.fee').hide();
+                }
 
-            
-            var discount_amt=document.querySelector('tr.fee');
-            var disamt= discount_amt.querySelector('.woocommerce-Price-amount').textContent.replace(/[^\d.]/g, '');
-            var finaldisamt = parseFloat(disamt.replace(',', ''));
+                $('.woocommerce-message, .woocommerce-error'). remove();
+                $('.woocommerce-cart-form').before('<div class="woocommerce-message" role="alert">Points removed.</div>');
 
-
-            console.log(finaldisamt);
-            // Check if the discount amount is 0, and hide the Points Redemption row if it is
-            if (finaldisamt === 0) {
-                $('.fee').hide();
+                $('body').trigger('update_checkout');
             }
-
-            $('.woocommerce-message, .woocommerce-error').remove();
-            $('.woocommerce-cart-form').before('<div class="woocommerce-message" role="alert">Points removed.</div>');
-
-            $('body').trigger('update_checkout');
-        }
-    }).fail(function () {
-        $('#apply-points-spinner').addClass('hidden');
-        $('#overlay').hide();
-        alert('Error processing the request.');
-    });
-}
-
+        }).fail(function () {
+            $('#apply-points-spinner').addClass('hidden');
+            $('#overlay').hide();
+            alert('Error processing the request.');
+        });
+    }
 
     // Event listener for the "Apply Points" button
     $('#apply_points_btn').on('click', function () {
@@ -144,14 +142,42 @@ function removePointsRedemption() {
         localStorage.removeItem('totalPointsApplied');
     });
 
-    var feeRow = document.querySelector('tr.fee');
-    if (feeRow) {
-        var feeamttext = feeRow.querySelector('.woocommerce-Price-amount').textContent.replace(/[^\d.]/g, '');
+    // Ensure the remove link is always appended on page load
+    function ensureRemoveLink() {
+        $('.fee').each(function () {
+            var feeText = $(this).find('.amount').text();
+            if (feeText && feeText.indexOf('[remove]') === -1) {
+                $(this).find('.amount').append(' <a href="#" class="remove-points">[remove]</a>');
+            }
+        });
+    }
 
-        pointsRedemptionAmountElement = parseFloat(feeamttext.replace(',', ''));
+    ensureRemoveLink(); // Run on page load
+    $(document).on('updated_cart_totals', ensureRemoveLink); // Run after cart totals update
+    
+});
 
-        if (isNaN(pointsRedemptionAmountElement) || pointsRedemptionAmountElement === 0) {
-            $('.fee').hide();
+jQuery(document).ready(function ($) {
+    function checkFeeRow() {
+        var feeRow = document.querySelector('tr.fee');
+        if (feeRow) {
+            var feeamttext = feeRow.querySelector('.woocommerce-Price-amount').textContent.replace(/[^\d.]/g, '');
+            console.log(feeamttext);
+            var pointsRedemptionAmountElement = parseFloat(feeamttext.replace(',', ''));
+
+            if (isNaN(pointsRedemptionAmountElement) || pointsRedemptionAmountElement === 0) {
+                $('.fee').hide();
+            } else {
+                $('.fee').show();
+            }
         }
     }
+
+    // Run when the page is initially loaded
+    checkFeeRow();
+
+    // Re-run the function whenever WooCommerce updates the checkout page
+    $(document.body).on('updated_checkout', function () {
+        checkFeeRow();
+    });
 });

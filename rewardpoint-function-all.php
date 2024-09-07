@@ -1600,13 +1600,7 @@ function add_point_log_entry($user_id, $points, $point_source, $reason = '', $or
 // Enqueue your custom script
 
 
-/**
- * Function to display the points redemption discount on the cart page
- *
- * @param WC_Cart $cart The cart object
- */
-function display_discount_on_cart($cart)
-{
+function display_discount_on_cart($cart) {
     $point_redemption = get_option('point_redemption', 0);
     if ($point_redemption) {
         if (is_admin() && !defined('DOING_AJAX')) {
@@ -1627,17 +1621,33 @@ function display_discount_on_cart($cart)
             }
         }
 
-        // // Add the updated Points Redemption fee if there's a discount
-        // if ($discount_amount > 0) {
+        // if (is_user_logged_in() && $discount_amount > 0) {
+        //     // Add the Points Redemption fee with the amount and remove link
         //     $cart->add_fee(__('Points Redemption', 'your-theme-domain'), -$discount_amount, true, 'points_redemption_discount');
         // }
         if (is_user_logged_in()) {
+            // Add the Points Redemption fee with the amount and remove link
             $cart->add_fee(__('Points Redemption', 'your-theme-domain'), -$discount_amount, true, 'points_redemption_discount');
-
         }
     }
 }
 add_action('woocommerce_cart_calculate_fees', 'display_discount_on_cart');
+
+// Ensure that the remove link is appended during the rendering of the discount amount
+function append_remove_link_to_fee($fee_html, $fee) {
+    if ($fee->id === 'points_redemption_discount') {
+        $remove_link = '<a href="#" class="remove-points">[remove]</a>';
+        $fee_html .= ' ' . $remove_link;
+    }
+    return $fee_html;
+}
+add_filter('woocommerce_cart_totals_fee_html', 'append_remove_link_to_fee', 10, 2);
+
+
+
+
+
+
 
 
 function apply_points_redemption()
