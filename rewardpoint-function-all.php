@@ -1633,7 +1633,7 @@ function display_discount_on_cart($cart) {
 }
 add_action('woocommerce_cart_calculate_fees', 'display_discount_on_cart');
 
-// Ensure that the remove link is appended during the rendering of the discount amount
+// Function to append the remove link to both the cart and checkout pages
 function append_remove_link_to_fee($fee_html, $fee) {
     if ($fee->id === 'points_redemption_discount') {
         $remove_link = '<a href="#" class="remove-points">[remove]</a>';
@@ -1641,7 +1641,20 @@ function append_remove_link_to_fee($fee_html, $fee) {
     }
     return $fee_html;
 }
+
+// Hook into the cart totals fee (cart page)
 add_filter('woocommerce_cart_totals_fee_html', 'append_remove_link_to_fee', 10, 2);
+
+// Hook into the order item totals (checkout page)
+add_filter('woocommerce_get_order_item_totals', function($total_rows, $order, $tax_display) {
+    foreach ($total_rows as $key => $total_row) {
+        if ($key === 'fee') {
+            $total_rows[$key]['value'] .= ' <a href="#" class="remove-points">[remove]</a>';
+        }
+    }
+    return $total_rows;
+}, 10, 3);
+
 
 
 
@@ -2124,8 +2137,55 @@ if($ref_system){
 add_action('user_register', 'apply_referral_bonus_points');
 }
 
+function customize_coupon_message() {
+    // Modify the coupon message to include "Have Points?"
+    return 'Have a coupon? <a href="#" class="showcoupon">Click here to enter your code</a> Or Have Points? <a href="#" id="showpoints">Click here to add Points</a>';
+}
+
+function check_applied_points() {
+    // Ensure WooCommerce session is available
+    if (WC()->session) {
+        $applied_points = WC()->session->get('points_redemption_discount');
+
+        // Check if applied points are 0 or not applied
+        if (empty($applied_points) || $applied_points <= 0) {
+            // Apply the filter to modify the coupon message
+            add_filter('woocommerce_checkout_coupon_message', 'customize_coupon_message');
+        }
+    }
+}
+
+// Use 'template_redirect' to ensure WooCommerce session is initialized before the checkout page is rendered
+add_action('template_redirect', 'check_applied_points');
 
 
 
+function apply_points_box_on_checkout(){ ?>
+        <div class="points-redemption-checkout">
+            <input type="number" name="points_redemption" id="points_redemption" placeholder="Enter Points" min="0" step="1">
+            <button type="button" class="button" id="apply_points_btn">Apply Points</button>
+<!-- Spinner (initially hidden) -->
+<div id="apply-points-spinner" class="hidden">
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+            </div>
+
+            <!-- White Overlay (initially hidden) -->
+            <div id="overlay" class="hidden"></div>
+        </div>
+    
+    <?php
+}
+add_action('woocommerce_review_order_before_payment', 'apply_points_box_on_checkout');
 
 ?>

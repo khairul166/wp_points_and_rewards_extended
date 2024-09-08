@@ -104,3 +104,18 @@
     z-index: 9998;
     display: none;
 }
+
+
+.custom-coupon-text {
+    font-size: 16px;
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.points-redemption-checkout{
+    margin-bottom: 1rem;
+}
+
+.points-redemption-checkout input{
+    width: 69%;
+}

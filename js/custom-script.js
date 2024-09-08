@@ -107,6 +107,20 @@ jQuery(document).ready(function ($) {
             alert('Error processing the request.');
         });
     }
+    // Delegate click event to remove points link, works for dynamic content
+    $(document).on('click', '.remove-points', function (e) {
+        e.preventDefault(); // Prevent the default anchor behavior
+        removePointsRedemption(); // Call the function to remove points
+    });
+
+    // Re-run the function when WooCommerce updates the checkout via AJAX
+    $(document.body).on('updated_checkout', function () {
+        // Ensure remove link stays after checkout update
+        var feeRow = $('tr.fee');
+        if (feeRow.length && !feeRow.find('.remove-points').length) {
+            feeRow.find('.woocommerce-Price-amount').append(' <a href="#" class="remove-points">[remove]</a>');
+        }
+    });
 
     // Event listener for the "Apply Points" button
     $('#apply_points_btn').on('click', function () {
@@ -179,5 +193,18 @@ jQuery(document).ready(function ($) {
     // Re-run the function whenever WooCommerce updates the checkout page
     $(document.body).on('updated_checkout', function () {
         checkFeeRow();
+    });
+});
+
+jQuery(document).ready(function($){
+    // Initially hide the points redemption box
+    $('.points-redemption-checkout').hide();
+
+    // When the "Click here to add Points" link is clicked
+    $('#showpoints').on('click', function(e) {
+        e.preventDefault();
+
+        // Toggle the visibility of the points redemption box
+        $('.points-redemption-checkout').slideToggle();
     });
 });
