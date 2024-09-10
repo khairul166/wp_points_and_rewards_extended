@@ -1656,13 +1656,6 @@ add_filter('woocommerce_get_order_item_totals', function($total_rows, $order, $t
 }, 10, 3);
 
 
-
-
-
-
-
-
-
 function apply_points_redemption()
 {
     $point_redemption = get_option('point_redemption', 0);
@@ -1903,7 +1896,12 @@ function modify_thankyou_order_received_text($text, $order)
         // Calculate the points earned based on the cart total and conversion rates
         $points_earned = round(($cart_total * floatval($point_conversation_rate_point)) / floatval($point_conversation_rate_taka));
         // Customize the thank you text here
-        $modified_text = 'Thank you. Your order has been received. You will earn <strong>' . $points_earned . '</strong> points after Completing this order.';
+        if($points_earned===0){
+            $modified_text = 'Thank you. Your order has been received. You will earn <strong>' . $points_earned . '</strong> points after Completing this order.';
+        }else{
+            $modified_text = 'Thank you. Your order has been received.'; 
+        }
+        
         return $modified_text;
     } else {
         $modified_text = 'Thank you. Your order has been received.';
@@ -2187,5 +2185,9 @@ function apply_points_box_on_checkout(){ ?>
     <?php
 }
 add_action('woocommerce_review_order_before_payment', 'apply_points_box_on_checkout');
+
+
+
+
 
 ?>

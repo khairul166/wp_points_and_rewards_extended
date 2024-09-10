@@ -33,29 +33,24 @@ jQuery(document).ready(function ($) {
                 $('.order-total td').html(response.total_amount);
                 $('.points-earned td').html(pointsEarned + ' Points');
 
-
                 var adddiscountAmount = parseFloat(discountAmount.replace(/[^\d.-]/g, ''));
-
-                console.log('add discount: ' + adddiscountAmount); 
-                
                 if (adddiscountAmount === 0 || isNaN(adddiscountAmount)) {
                     $('.fee').hide(); // Hide the .fee row if adddiscountAmount is 0 or NaN
                 } else {
                     $('.fee').show(); // Show the .fee row if adddiscountAmount is not 0
                 }
-                
 
                 // Trigger the cart recalculation
                 $('body').trigger('update_checkout');
                 $('.woocommerce-message, .woocommerce-error').remove();
 
-                // Show the applied points message
+                // Show the applied points message on both the cart and checkout pages
                 var pointText = Math.floor(points) + ' Points More Added. Total ' + Math.floor(totalPointsApplied) + ' Points Applied.';
-                $('.woocommerce-cart-form').before('<div class="woocommerce-message" role="alert">' + pointText + '</div>');
+                $('.woocommerce-cart-form, .woocommerce-form-coupon-toggle').before('<div class="woocommerce-message" role="alert">' + pointText + '</div>');
 
             } else {
                 $('.woocommerce-message, .woocommerce-error').remove();
-                $('.woocommerce-cart-form').before('<div class="woocommerce-error" role="alert">Oops!! You don\'t have ' + points + ' points for redemption.</div>');
+                $('.woocommerce-cart-form, .woocommerce-form-coupon-toggle').before('<div class="woocommerce-error" role="alert">Oops!! You don\'t have ' + points + ' points for redemption.</div>');
             }
         }).fail(function () {
             // Hide the spinner and overlay if there is an error
@@ -89,15 +84,14 @@ jQuery(document).ready(function ($) {
                 $('.fee td').html(response.discount_amount + ' <a href="#" class="remove-points">[remove]</a>');
                 $('.order-total td').html(response.total_amount);
                 $('.points-earned td').html(response.points_earned + ' Points');
-                   
-                   var remdiscountAmount = parseFloat(response.discount_amount.replace(/[^\d.-]/g, ''));
-                   console.log('remdiscountAmount: ' + remdiscountAmount); 
+
+                var remdiscountAmount = parseFloat(response.discount_amount.replace(/[^\d.-]/g, ''));
                 if (remdiscountAmount === 0 || isNaN(remdiscountAmount)) {
                     $('.fee').hide();
                 }
 
-                $('.woocommerce-message, .woocommerce-error'). remove();
-                $('.woocommerce-cart-form').before('<div class="woocommerce-message" role="alert">Points removed.</div>');
+                $('.woocommerce-message, .woocommerce-error').remove();
+                $('.woocommerce-cart-form, .woocommerce-form-coupon-toggle').before('<div class="woocommerce-message" role="alert">Points removed.</div>');
 
                 $('body').trigger('update_checkout');
             }
@@ -107,6 +101,7 @@ jQuery(document).ready(function ($) {
             alert('Error processing the request.');
         });
     }
+
     // Delegate click event to remove points link, works for dynamic content
     $(document).on('click', '.remove-points', function (e) {
         e.preventDefault(); // Prevent the default anchor behavior
@@ -132,18 +127,12 @@ jQuery(document).ready(function ($) {
                 applyPointsRedemption(points);
             } else {
                 $('.woocommerce-message, .woocommerce-error').remove();
-                $('.woocommerce-cart-form').before('<div class="woocommerce-error" role="alert">Enter a valid point value to redeem.</div>');
+                $('.woocommerce-cart-form, .woocommerce-form-coupon-toggle').before('<div class="woocommerce-error" role="alert">Enter a valid point value to redeem.</div>');
             }
         } else {
             $('.woocommerce-message, .woocommerce-error').remove();
-            $('.woocommerce-cart-form').before('<div class="woocommerce-error" role="alert">Please enter a total of less than or equal to ' + cartTotal + ' Points to redeem.</div>');
+            $('.woocommerce-cart-form, .woocommerce-form-coupon-toggle').before('<div class="woocommerce-error" role="alert">Please enter a total of less than or equal to ' + cartTotal + ' Points to redeem.</div>');
         }
-    });
-
-    // Event listener for the "Remove Points" link
-    $(document).on('click', '.remove-points', function (e) {
-        e.preventDefault();
-        removePointsRedemption();
     });
 
     // Reset the points after checkout is completed
@@ -168,15 +157,12 @@ jQuery(document).ready(function ($) {
 
     ensureRemoveLink(); // Run on page load
     $(document).on('updated_cart_totals', ensureRemoveLink); // Run after cart totals update
-    
-});
 
-jQuery(document).ready(function ($) {
+    // Ensure the fee row visibility on page load and after update
     function checkFeeRow() {
         var feeRow = document.querySelector('tr.fee');
         if (feeRow) {
             var feeamttext = feeRow.querySelector('.woocommerce-Price-amount').textContent.replace(/[^\d.]/g, '');
-            console.log(feeamttext);
             var pointsRedemptionAmountElement = parseFloat(feeamttext.replace(',', ''));
 
             if (isNaN(pointsRedemptionAmountElement) || pointsRedemptionAmountElement === 0) {
@@ -194,14 +180,12 @@ jQuery(document).ready(function ($) {
     $(document.body).on('updated_checkout', function () {
         checkFeeRow();
     });
-});
 
-jQuery(document).ready(function($){
     // Initially hide the points redemption box
     $('.points-redemption-checkout').hide();
 
     // When the "Click here to add Points" link is clicked
-    $('#showpoints').on('click', function(e) {
+    $('#showpoints').on('click', function (e) {
         e.preventDefault();
 
         // Toggle the visibility of the points redemption box
