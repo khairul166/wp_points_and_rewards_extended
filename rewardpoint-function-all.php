@@ -454,7 +454,7 @@ function points_rewards_submenu_callback()
                 $signup_points_box = isset($_POST['signup_points_box']) ? sanitize_text_field($_POST['signup_points_box']) : '';
                 $ref_user_points_box = isset($_POST['ref_user_points_box']) ? sanitize_text_field($_POST['ref_user_points_box']) : '';
                 $referrer_points_box = isset($_POST['referrer_points_box']) ? sanitize_text_field($_POST['referrer_points_box']) : '';
-
+                $point_massage = isset($_POST['point_massage']) ? 1 : 0; // Ensure it's stored as a boolean
                 // Save the point and reward status, conversation rates, and point redemption to the database or perform any other necessary actions
                 update_option('point_and_reward', $point_and_reward);
                 update_option('point_conversation_rate_point', $point_conversation_rate_point);
@@ -469,6 +469,7 @@ function points_rewards_submenu_callback()
                 update_option('ref_system', $ref_system);
                 update_option('ref_user_points_box', $ref_user_points_box);
                 update_option('referrer_points_box', $referrer_points_box);
+                update_option('point_massage', $point_massage);
 
                //echo '<div class="notice notice-success"><p><strong>Point settings saved.</strong></p></div>';
                 echo '<div class="success-notice"><p><strong>Point settings saved.</strong></p></div>';
@@ -488,6 +489,7 @@ function points_rewards_submenu_callback()
             $ref_system = get_option('ref_system', 0);
             $ref_user_points_box = get_option('ref_user_points_box', 0);
             $referrer_points_box = get_option('referrer_points_box', 0);
+            $point_massage = get_option('point_massage', 0);
             ?>
 
             <div id="point-settings" class="wrap">
@@ -720,6 +722,20 @@ function points_rewards_submenu_callback()
                                         <input type="checkbox" class="toggle" id="admin_point_adjust" name="admin_point_adjust"
                                             <?php echo checked($admin_point_adjust, 1); ?>>
                                         <label class="toggle-slider" for="admin_point_adjust"></label>
+                                    </div>
+                                            </div>
+
+                                            <div class="left-width-div">
+                        <label for="points_massage">Show points massage in single products in cart and product page:</label>
+                        <span class="custom-tooltip" tabindex="0" aria-label="Toggle this to enable this feature">
+    <span class="tooltip-icon">?</span>
+</span>
+                </div>
+                <div class="right-width-div right-div-ht">
+                <div class="toggle-switch">
+                                        <input type="checkbox" class="toggle" id="point_massage" name="point_massage"
+                                            <?php echo checked($point_massage, 1); ?>>
+                                        <label class="toggle-slider" for="point_massage"></label>
                                     </div>
                                             </div>
                                         </div>
@@ -2188,7 +2204,17 @@ function apply_points_box_on_checkout(){ ?>
 add_action('woocommerce_review_order_before_payment', 'apply_points_box_on_checkout');
 
 
+function shop_page_product_text(){
+    global $product;
 
+    // Output the shortcode for the current product using its ID
+    echo do_shortcode('[product_points_earned product_id="' . $product->get_id() . '"]');
+}
+$point_massage = get_option('point_massage', 0);
+if($point_massage){
+    add_action('woocommerce_after_shop_loop_item_title', 'shop_page_product_text');
+    add_action('woocommerce_before_add_to_cart_form', 'shop_page_product_text');
+}
 
 
 ?>
