@@ -2139,22 +2139,23 @@ function customize_coupon_message() {
     // Modify the coupon message to include "Have Points?"
     return 'Have a coupon? <a href="#" class="showcoupon">Click here to enter your code</a> Or Have Points? <a href="#" id="showpoints">Click here to add Points</a>';
 }
+add_filter('woocommerce_checkout_coupon_message', 'customize_coupon_message');
 
-function check_applied_points() {
-    // Ensure WooCommerce session is available
-    if (WC()->session) {
-        $applied_points = WC()->session->get('points_redemption_discount');
+// function check_applied_points() {
+//     // Ensure WooCommerce session is available
+//     if (WC()->session) {
+//         $applied_points = WC()->session->get('points_redemption_discount');
 
-        // Check if applied points are 0 or not applied
-        if (empty($applied_points) || $applied_points <= 0) {
-            // Apply the filter to modify the coupon message
-            add_filter('woocommerce_checkout_coupon_message', 'customize_coupon_message');
-        }
-    }
-}
+//         // Check if applied points are 0 or not applied
+//         if (empty($applied_points) || $applied_points <= 0) {
+//             // Apply the filter to modify the coupon message
+//             add_filter('woocommerce_checkout_coupon_message', 'customize_coupon_message');
+//         }
+//     }
+// }
 
-// Use 'template_redirect' to ensure WooCommerce session is initialized before the checkout page is rendered
-add_action('template_redirect', 'check_applied_points');
+// // Use 'template_redirect' to ensure WooCommerce session is initialized before the checkout page is rendered
+// add_action('template_redirect', 'check_applied_points');
 
 
 

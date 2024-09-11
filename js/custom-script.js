@@ -32,6 +32,7 @@ jQuery(document).ready(function ($) {
                 $('.fee td').html('-' + discountAmount + ' <a href="#" class="remove-points">[remove]</a>');
                 $('.order-total td').html(response.total_amount);
                 $('.points-earned td').html(pointsEarned + ' Points');
+                $('.fee th').append('[' + totalPointsApplied + ']');
 
                 var adddiscountAmount = parseFloat(discountAmount.replace(/[^\d.-]/g, ''));
                 if (adddiscountAmount === 0 || isNaN(adddiscountAmount)) {
@@ -47,6 +48,10 @@ jQuery(document).ready(function ($) {
                 // Show the applied points message on both the cart and checkout pages
                 var pointText = Math.floor(points) + ' Points More Added. Total ' + Math.floor(totalPointsApplied) + ' Points Applied.';
                 $('.woocommerce-cart-form, .woocommerce-form-coupon-toggle').before('<div class="woocommerce-message" role="alert">' + pointText + '</div>');
+
+                // Update the checkout coupon message
+                $('.woocommerce-checkout-coupon-message').html(response.coupon_message);
+
 
             } else {
                 $('.woocommerce-message, .woocommerce-error').remove();
@@ -93,6 +98,8 @@ jQuery(document).ready(function ($) {
                 $('.woocommerce-message, .woocommerce-error').remove();
                 $('.woocommerce-cart-form, .woocommerce-form-coupon-toggle').before('<div class="woocommerce-message" role="alert">Points removed.</div>');
 
+                // Update the checkout coupon message
+                $('.woocommerce-checkout-coupon-message').html(response.coupon_message);
                 $('body').trigger('update_checkout');
             }
         }).fail(function () {
