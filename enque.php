@@ -72,3 +72,21 @@ function enqueue_my_custom_scripts() {
     ));
 }
 add_action('wp_enqueue_scripts', 'enqueue_my_custom_scripts');
+
+// Enqueue the script and pass PHP variables to JavaScript
+function enqueue_custom_script() {
+    // Enqueue your custom script
+    wp_enqueue_script('custom-script', get_template_directory_uri() . '/js/custom-script.js', array('jquery'), null, true);
+
+    // Get the conversion rates from the options
+    $point_conversation_rate_point = get_option('point_conversation_rate_point', 1); // Default value 1 if not set
+    $point_conversation_rate_taka = get_option('point_conversation_rate_taka', 1); // Default value 1 if not set
+
+    // Localize the script to pass PHP variables to JavaScript
+    wp_localize_script('custom-script', 'conversion_rates', array(
+        'point_rate' => $point_conversation_rate_point,
+        'taka_rate' => $point_conversation_rate_taka
+    ));
+}
+add_action('wp_enqueue_scripts', 'enqueue_custom_script');
+

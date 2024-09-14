@@ -32,7 +32,8 @@ jQuery(document).ready(function ($) {
                 $('.fee td').html('-' + discountAmount + ' <a href="#" class="remove-points">[remove]</a>');
                 $('.order-total td').html(response.total_amount);
                 $('.points-earned td').html(pointsEarned + ' Points');
-                $('.fee th').append('[' + totalPointsApplied + ']');
+                $('.fee th .applied-points-text').remove();
+                $('.fee th').append('<span class="applied-points-text">[' + totalPointsApplied + ' Points]</span>');
 
                 var adddiscountAmount = parseFloat(discountAmount.replace(/[^\d.-]/g, ''));
                 if (adddiscountAmount === 0 || isNaN(adddiscountAmount)) {
@@ -89,6 +90,10 @@ jQuery(document).ready(function ($) {
                 $('.fee td').html(response.discount_amount + ' <a href="#" class="remove-points">[remove]</a>');
                 $('.order-total td').html(response.total_amount);
                 $('.points-earned td').html(response.points_earned + ' Points');
+                $('.fee th .applied-points-text').remove();
+
+                // Append the points only once
+                $('.fee th').append('<span class="applied-points-text">[' + totalPointsApplied + ' Points]</span>');
 
                 var remdiscountAmount = parseFloat(response.discount_amount.replace(/[^\d.-]/g, ''));
                 if (remdiscountAmount === 0 || isNaN(remdiscountAmount)) {
@@ -126,31 +131,46 @@ jQuery(document).ready(function ($) {
 
     // Event listener for the "Apply Points" button
     $('#apply_points_btn').on('click', function () {
+        var pointConversionRate = parseFloat(conversion_rates.point_rate);
+        var takaConversionRate = parseFloat(conversion_rates.taka_rate);
+
         var points = parseFloat($('#points_redemption').val());
         var cartTotal = parseFloat($('.cart-subtotal td').text().replace(/[^\d.]/g, ''));
+        var newtotalpoints= points+totalPointsApplied;
+        var newdiscountamt= (newtotalpoints*(pointConversionRate/takaConversionRate));
+        var needstoapplyptn= ((takaConversionRate*cartTotal)/pointConversionRate)-totalPointsApplied;
 
-        if (points + totalPointsApplied <= cartTotal) {
+        if (newdiscountamt<= cartTotal) {
+
             if (points >= 1) {
                 applyPointsRedemption(points);
             } else {
+                if(needstoapplyptn<=0){
+                    $('.woocommerce-message, .woocommerce-error').remove();
+                $('.woocommerce-cart-form, .woocommerce-form-coupon-toggle').before('<div class="woocommerce-error" role="alert">Enter a valid point value to redeem.</div>');
+                }
                 $('.woocommerce-message, .woocommerce-error').remove();
                 $('.woocommerce-cart-form, .woocommerce-form-coupon-toggle').before('<div class="woocommerce-error" role="alert">Enter a valid point value to redeem.</div>');
             }
         } else {
             $('.woocommerce-message, .woocommerce-error').remove();
-            $('.woocommerce-cart-form, .woocommerce-form-coupon-toggle').before('<div class="woocommerce-error" role="alert">Please enter a total of less than or equal to ' + cartTotal + ' Points to redeem.</div>');
+            $('.woocommerce-cart-form, .woocommerce-form-coupon-toggle').before('<div class="woocommerce-error" role="alert">Please enter a total of less than or equal to ' + needstoapplyptn + ' Points to redeem.</div>');
         }
+
+
     });
 
-    // Reset the points after checkout is completed
-    $(document.body).on('checkout_order_processed', function () {
-        localStorage.removeItem('totalPointsApplied');
-    });
+    // // Reset the points after checkout is completed
+    // $(document.body).on('checkout_order_processed', function () {
+    //     localStorage.removeItem('totalPointsApplied');
+    // });
 
     // Clear the points when the user starts a new order
-    $('.woocommerce-cart').on('click', '.checkout-button', function () {
-        localStorage.removeItem('totalPointsApplied');
-    });
+// Clear the points when the user clicks the Place Order button on the checkout page
+$(document).on('click', '#place_order', function () {
+    localStorage.removeItem('totalPointsApplied');
+});
+
 
     // Ensure the remove link is always appended on page load
     function ensureRemoveLink() {
@@ -167,6 +187,7 @@ jQuery(document).ready(function ($) {
 
     // Ensure the fee row visibility on page load and after update
     function checkFeeRow() {
+
         var feeRow = document.querySelector('tr.fee');
         if (feeRow) {
             var feeamttext = feeRow.querySelector('.woocommerce-Price-amount').textContent.replace(/[^\d.]/g, '');
@@ -198,4 +219,37 @@ jQuery(document).ready(function ($) {
         // Toggle the visibility of the points redemption box
         $('.points-redemption-checkout').slideToggle();
     });
+
+    jQuery(document).ready(function($) {
+        var totalPointsApplied = parseFloat(localStorage.getItem('totalPointsApplied')) || 0;
+        if(totalPointsApplied>0){
+            $('.fee th .applied-points-text').remove();
+
+        // Append the points only once
+        $('.fee th').append('<span class="applied-points-text">[' + totalPointsApplied + ' Points]</span>');
+        
+        }
+    });
+
+    function appendtotalpoint(){
+        var totalPointsApplied = parseFloat(localStorage.getItem('totalPointsApplied')) || 0;
+        if(totalPointsApplied>0){
+            
+            $('.fee th .applied-points-text').remove();
+
+        // Append the points only once
+        $('.fee th').append('<span class="applied-points-text">[' + totalPointsApplied + ' Points]</span>');
+        }
+    }
+     // Run when the page is initially loaded
+     appendtotalpoint();
+
+     // Re-run the function whenever WooCommerce updates the checkout page
+     $(document.body).on('updated_checkout', function () {
+        appendtotalpoint();
+     });
+     $(document).on('updated_cart_totals', appendtotalpoint); // Run after cart totals update
 });
+
+
+

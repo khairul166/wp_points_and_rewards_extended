@@ -254,6 +254,7 @@ function points_rewards_submenu_callback()
                 $point_and_reward = get_option('point_and_reward', 0);
                 echo '<div class="wrap">';
                 echo '<p class="search-box" style="float: right; margin: 0;"><form method="get" action="" style="float: right; margin: 15px 0px;">';
+                // echo <
                 echo '<input type="hidden" name="page" value="points-rewards">';
                 echo '<input type="hidden" name="tab" value="point-log">';
                 echo '<input type="text" name="search" value="' . esc_attr($search_query) . '" placeholder="Search user by username">';
@@ -1397,10 +1398,10 @@ function display_point_log_shortcode()
         $total_points = calculate_total_user_points($user_id);
 
         echo '<p>Your current points balance: ' . esc_html($total_points) . '</p>';
-        echo '<h2>Last 20 Point Logs</h2>';
+        echo '<h2>Last 50 Point Logs</h2>';
 
         // Pagination variables
-        $per_page = 20;
+        $per_page = 50;
         $current_page = isset($_GET['paged']) ? absint($_GET['paged']) : 1;
         $offset = ($current_page - 1) * $per_page;
 
@@ -1445,24 +1446,25 @@ function display_point_log_shortcode()
                     $human_date = date('j M, Y \a\t g:i A', $log_date);
                 }
 
-                //define the point source
+                // Define the point source
                 $point_source = $log->point_source;
                 $log_reason = $log->reason;
-                $log_order_id=$log->order_id;
+                $log_order_id = $log->order_id;
                 $order = wc_get_order($log_order_id);
-                $view_order_url = $order->get_view_order_url();
+                $view_order_url = $order ? $order->get_view_order_url() : '#';  // Check if $order exists
+
                 if ($point_source === 'purchase') {
-                    $point_source_text = 'Earned for Purchase <a href="'.$view_order_url . '">#' . $log_order_id . '</a>';
+                    $point_source_text = 'Earned for Purchase <a href="' . $view_order_url . '">#' . ($log_order_id ? $log_order_id : '') . '</a>';
                 } elseif ($point_source === 'admin_adjustment') {
                     $point_source_text = 'Point Adjusted by Admin ' . $log_reason;
                 } elseif ($point_source === 'redeem') {
-                    $point_source_text = 'Deducted for Redeeming <a href="'.$view_order_url . '">#' . $log_order_id . '</a>';
-                } elseif ($point_source === 'signup_bonus'){
-                    $point_source_text= 'Signup Bonus';
-                } 
-                else {
+                    $point_source_text = 'Deducted for Redeeming <a href="' . $view_order_url . '">#' . ($log_order_id ? $log_order_id : '') . '</a>';
+                } elseif ($point_source === 'signup_bonus') {
+                    $point_source_text = 'Signup Bonus';
+                } else {
                     $point_source_text = 'Unknown Source';
                 }
+
                 echo '<tr>';
                 echo '<td>' . $point_source_text . '</td>';
                 echo '<td>' . esc_html($human_date) . '</td>';
