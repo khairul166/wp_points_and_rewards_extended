@@ -215,7 +215,7 @@ function points_rewards_submenu_callback()
             //points_page_callback();
             //==================================================================
 
-            // Retrieve the user's point log
+           // Retrieve the user's point log
 global $wpdb;
 $table_name = $wpdb->prefix . 'point_log';
 
@@ -225,6 +225,9 @@ $search_query = isset($_GET['search']) ? sanitize_text_field($_GET['search']) : 
 // Get the start and end dates from the form
 $start_date = isset($_GET['start_date']) ? sanitize_text_field($_GET['start_date']) : '';
 $end_date = isset($_GET['end_date']) ? sanitize_text_field($_GET['end_date']) : '';
+
+// Get the selected point sources from the form (multiple select)
+$selected_sources = isset($_GET['point_sources']) ? array_map('sanitize_text_field', $_GET['point_sources']) : [];
 
 // Base query to retrieve logs
 $query = "SELECT * FROM {$table_name} WHERE 1=1";
@@ -261,6 +264,15 @@ if (!empty($start_date) && !empty($end_date)) {
     );
 }
 
+// If point sources are selected, filter logs by point source
+if (!empty($selected_sources)) {
+    $placeholders = implode(', ', array_fill(0, count($selected_sources), '%s'));
+    $query .= $wpdb->prepare(
+        " AND point_source IN ($placeholders)",
+        ...$selected_sources
+    );
+}
+
 // Add the ORDER BY clause
 $query .= " ORDER BY `id` DESC";
 
@@ -278,6 +290,7 @@ $query .= " LIMIT {$per_page} OFFSET {$offset}";
 $logs = $wpdb->get_results($query);
 
 
+
             // Display the point log
             if ($logs) {
                 $point_and_reward = get_option('point_and_reward', 0);
@@ -285,11 +298,22 @@ $logs = $wpdb->get_results($query);
                 echo '<h2>Point Log</h2>';
                 echo '<p class="search-box" style="float: right; margin: 0;"><form method="get" action="" style="float: right; margin: 15px 0px;">';
 
+                // Add a multiple select dropdown for point sources
+                echo '<label>Point Source: </label>';
+                echo '<select class="tag-select" name="point_sources[]" Placeholder="Select Point Source">
+                <option value="">Select Point Source</option>
+                <option value="purchase">Purchase</option>
+                <option value="admin_adjustment">Admin Adjustment</option>
+                <option value="redeem">Redeem</option>
+                <option value="signup_bonus">Signup Bonus</option>
+                <option value="signup_ref">Referral Bonus</option>
+                <option value="ref_signup">Signup Referral Bonus</option>
+                </select>';
 
+                // Add Date range
                 echo '<label>Date Range: </label>';
                 echo '<input type="date" name="start_date" value="' . esc_attr($_GET['start_date'] ?? '') . '" placeholder="Start Date">';
                 echo ' - ';
-                // echo '<label>End Date:</label>';
                 echo '<input type="date" name="end_date" value="' . esc_attr($_GET['end_date'] ?? '') . '" placeholder="End Date">';
 
 
@@ -460,6 +484,13 @@ $logs = $wpdb->get_results($query);
                 echo '</div>';
             } else {
                 echo '<p class="search-box" style="float: right; margin: 0;"><form method="get" action="" style="float: right; margin: 15px 0px;">';
+
+                echo '<label>Date Range: </label>';
+                echo '<input type="date" name="start_date" value="' . esc_attr($_GET['start_date'] ?? '') . '" placeholder="Start Date">';
+                echo ' - ';
+                // echo '<label>End Date:</label>';
+                echo '<input type="date" name="end_date" value="' . esc_attr($_GET['end_date'] ?? '') . '" placeholder="End Date">';
+
                 echo '<input type="hidden" name="page" value="points-rewards">';
                 echo '<input type="hidden" name="tab" value="point-log">';
                 echo '<input type="text" name="search" value="' . esc_attr($search_query) . '" placeholder="Search user by username">';
@@ -1321,7 +1352,11 @@ function display_product_points_earned($atts)
 
     return ''; // Return empty string if the product doesn't exist or is not purchasable
 }
-add_shortcode('product_points_earned', 'display_product_points_earned');
+$point_and_reward = get_option('point_and_reward', 0);
+if($point_and_reward){
+    add_shortcode('product_points_earned', 'display_product_points_earned');
+}
+
 
 
 /**
@@ -2198,22 +2233,6 @@ function customize_coupon_message() {
 }
 add_filter('woocommerce_checkout_coupon_message', 'customize_coupon_message');
 
-// function check_applied_points() {
-//     // Ensure WooCommerce session is available
-//     if (WC()->session) {
-//         $applied_points = WC()->session->get('points_redemption_discount');
-
-//         // Check if applied points are 0 or not applied
-//         if (empty($applied_points) || $applied_points <= 0) {
-//             // Apply the filter to modify the coupon message
-//             add_filter('woocommerce_checkout_coupon_message', 'customize_coupon_message');
-//         }
-//     }
-// }
-
-// // Use 'template_redirect' to ensure WooCommerce session is initialized before the checkout page is rendered
-// add_action('template_redirect', 'check_applied_points');
-
 
 
 function apply_points_box_on_checkout(){ ?>
@@ -2252,7 +2271,8 @@ function shop_page_product_text(){
     echo do_shortcode('[product_points_earned product_id="' . $product->get_id() . '"]');
 }
 $point_massage = get_option('point_massage', 0);
-if($point_massage){
+$point_and_reward = get_option('point_and_reward', 0);
+if($point_massage && $point_and_reward){
     add_action('woocommerce_after_shop_loop_item_title', 'shop_page_product_text');
     add_action('woocommerce_before_add_to_cart_form', 'shop_page_product_text');
 }

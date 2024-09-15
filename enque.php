@@ -14,8 +14,11 @@ function enqueue_custom_admin_style()
 
     // Enqueue the stylesheet.
     wp_enqueue_style('custom-admin-style', $css_url);
+
 }
 add_action('admin_enqueue_scripts', 'enqueue_custom_admin_style');
+
+
 
 
 
@@ -77,6 +80,7 @@ add_action('wp_enqueue_scripts', 'enqueue_my_custom_scripts');
 function enqueue_custom_script() {
     // Enqueue your custom script
     wp_enqueue_script('custom-script', get_template_directory_uri() . '/js/custom-script.js', array('jquery'), null, true);
+
 
     // Get the conversion rates from the options
     $point_conversation_rate_point = get_option('point_conversation_rate_point', 1); // Default value 1 if not set
