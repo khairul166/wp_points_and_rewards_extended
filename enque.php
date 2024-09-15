@@ -89,11 +89,3 @@ function enqueue_custom_script() {
     ));
 }
 add_action('wp_enqueue_scripts', 'enqueue_custom_script');
-
-
-
-function enqueue_datepicker_script() {
-    wp_enqueue_script('jquery-ui-datepicker');
-    wp_enqueue_style('jquery-ui-datepicker-style', '//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css');
-}
-add_action('admin_enqueue_scripts', 'enqueue_datepicker_script');
