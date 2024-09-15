@@ -211,50 +211,88 @@ function points_rewards_submenu_callback()
             <?php
             break;
         case 'point-log':
-            echo '<h2 class="section-head">Point Log</h2>';
+            
             //points_page_callback();
             //==================================================================
 
             // Retrieve the user's point log
-            global $wpdb;
-            $table_name = $wpdb->prefix . 'point_log';
+global $wpdb;
+$table_name = $wpdb->prefix . 'point_log';
 
-            // Get the search query if submitted
-            $search_query = isset($_GET['search']) ? sanitize_text_field($_GET['search']) : '';
+// Get the search query if submitted
+$search_query = isset($_GET['search']) ? sanitize_text_field($_GET['search']) : '';
 
-            // Query to retrieve logs based on the search query
-            $query = "SELECT * FROM {$table_name}";
+// Get the start and end dates from the form
+$start_date = isset($_GET['start_date']) ? sanitize_text_field($_GET['start_date']) : '';
+$end_date = isset($_GET['end_date']) ? sanitize_text_field($_GET['end_date']) : '';
 
-            // If a search query is provided, add the WHERE clause to filter logs by user ID
-            if (!empty($search_query)) {
-                $query .= $wpdb->prepare(
-                    " WHERE user_id IN (
+// Base query to retrieve logs
+$query = "SELECT * FROM {$table_name} WHERE 1=1";
+
+// If a search query is provided, add the WHERE clause to filter logs by user ID
+if (!empty($search_query)) {
+    $query .= $wpdb->prepare(
+        " AND user_id IN (
             SELECT ID FROM {$wpdb->users} WHERE user_login LIKE %s
         )",
-                    '%' . $search_query . '%'
-                );
-            }
-            // Add the ORDER BY clause
-            $query .= " ORDER BY `id` DESC";
-            // Pagination variables
-            $per_page = 20;
-            $current_page = isset($_GET['paged']) ? absint($_GET['paged']) : 1;
-            $offset = ($current_page - 1) * $per_page;
-            $total_logs = $wpdb->get_var("SELECT COUNT(*) FROM ({$query}) AS total_logs");
-            $total_pages = ceil($total_logs / $per_page);
+        '%' . $search_query . '%'
+    );
+}
 
-            // Add the LIMIT clause for pagination
-            $query .= " LIMIT {$per_page} OFFSET {$offset}";
+// Add conditions for date filtering
+if (!empty($start_date) && !empty($end_date)) {
+    // Filter by date range if both start and end dates are provided
+    $query .= $wpdb->prepare(
+        " AND DATE(log_date) BETWEEN %s AND %s",
+        $start_date,
+        $end_date
+    );
+} elseif (!empty($start_date)) {
+    // Filter from start date onwards if only start date is provided
+    $query .= $wpdb->prepare(
+        " AND DATE(log_date) >= %s",
+        $start_date
+    );
+} elseif (!empty($end_date)) {
+    // Filter up to the end date if only end date is provided
+    $query .= $wpdb->prepare(
+        " AND DATE(log_date) <= %s",
+        $end_date
+    );
+}
 
-            // Retrieve the logs
-            $logs = $wpdb->get_results($query);
+// Add the ORDER BY clause
+$query .= " ORDER BY `id` DESC";
+
+// Pagination variables
+$per_page = 20;
+$current_page = isset($_GET['paged']) ? absint($_GET['paged']) : 1;
+$offset = ($current_page - 1) * $per_page;
+$total_logs = $wpdb->get_var("SELECT COUNT(*) FROM ({$query}) AS total_logs");
+$total_pages = ceil($total_logs / $per_page);
+
+// Add the LIMIT clause for pagination
+$query .= " LIMIT {$per_page} OFFSET {$offset}";
+
+// Retrieve the logs
+$logs = $wpdb->get_results($query);
+
 
             // Display the point log
             if ($logs) {
                 $point_and_reward = get_option('point_and_reward', 0);
                 echo '<div class="wrap">';
+                echo '<h2>Point Log</h2>';
                 echo '<p class="search-box" style="float: right; margin: 0;"><form method="get" action="" style="float: right; margin: 15px 0px;">';
-                // echo <
+
+
+                echo '<label>Date Range: </label>';
+                echo '<input type="date" name="start_date" value="' . esc_attr($_GET['start_date'] ?? '') . '" placeholder="Start Date">';
+                echo ' - ';
+                // echo '<label>End Date:</label>';
+                echo '<input type="date" name="end_date" value="' . esc_attr($_GET['end_date'] ?? '') . '" placeholder="End Date">';
+
+
                 echo '<input type="hidden" name="page" value="points-rewards">';
                 echo '<input type="hidden" name="tab" value="point-log">';
                 echo '<input type="text" name="search" value="' . esc_attr($search_query) . '" placeholder="Search user by username">';
@@ -435,6 +473,7 @@ function points_rewards_submenu_callback()
                 echo '<div class="tablenav-pages" style="float: right; margin: 6px 0px 0px 0px;">';
                 echo '<span class="displaying-num">' . number_format_i18n($total_logs) . ' items </span></div>';
             }
+
 
             //=======================================================
             break;
