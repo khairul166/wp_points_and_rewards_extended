@@ -296,3 +296,20 @@
     visibility: visible;
 }
 
+.form-container {
+    display: flex;
+    gap: 10px; /* Adjust spacing between forms */
+    padding: 15px 0;
+}
+
+.form1 {
+    flex: 1 0 80%; /* 35% width */
+}
+
+.form2 {
+    flex: 0 0 20%; /* 65% width */
+}
+
+form.form2 input {
+    margin: 0 3px !important;
+}

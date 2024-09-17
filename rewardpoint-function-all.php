@@ -2,6 +2,9 @@
 
 require_once(get_template_directory() . '/reward-point/custom-point-adjustment.php');
 require_once(get_template_directory() . '/reward-point/enque.php');
+require_once(get_template_directory() . '/reward-point/excel/src/SimpleXLSXGen.php');
+
+
 
 // Start session if not already started
 function start_session() {
@@ -10,6 +13,7 @@ function start_session() {
     }
 }
 add_action('init', 'start_session', 1);
+
 
 
 
@@ -157,8 +161,121 @@ add_action('admin_menu', 'add_points_rewards_submenu');
 
 
 // Callback function for the Points and Rewards sub-menu page
-function points_rewards_submenu_callback()
-{
+function points_rewards_submenu_callback() {
+    global $wpdb;
+
+    // Fetch filters from GET request
+    $search_query = isset($_GET['search']) ? sanitize_text_field($_GET['search']) : '';
+    $start_date = isset($_GET['start_date']) ? sanitize_text_field($_GET['start_date']) : '';
+    $end_date = isset($_GET['end_date']) ? sanitize_text_field($_GET['end_date']) : '';
+    $selected_sources = isset($_GET['point_sources']) ? array_map('sanitize_text_field', $_GET['point_sources']) : [];
+
+    // Base query to retrieve logs
+    $query = "SELECT * FROM {$wpdb->prefix}point_log WHERE 1=1";
+
+    // Apply filters (same as used in the display logic)
+    if (!empty($search_query)) {
+        $query .= $wpdb->prepare(
+            " AND user_id IN (
+                SELECT ID FROM {$wpdb->users} WHERE user_login LIKE %s
+            )",
+            '%' . $search_query . '%'
+        );
+    }
+
+    if (!empty($start_date) && !empty($end_date)) {
+        $query .= $wpdb->prepare(
+            " AND DATE(log_date) BETWEEN %s AND %s",
+            $start_date, $end_date
+        );
+    } elseif (!empty($start_date)) {
+        $query .= $wpdb->prepare(
+            " AND DATE(log_date) >= %s",
+            $start_date
+        );
+    } elseif (!empty($end_date)) {
+        $query .= $wpdb->prepare(
+            " AND DATE(log_date) <= %s",
+            $end_date
+        );
+    }
+
+    if (!empty($selected_sources)) {
+        $placeholders = implode(', ', array_fill(0, count($selected_sources), '%s'));
+        $query .= $wpdb->prepare(
+            " AND point_source IN ($placeholders)",
+            ...$selected_sources
+        );
+    }
+    $query .= " ORDER BY `id` DESC";
+
+    // Fetch the filtered data
+    $logs = $wpdb->get_results($query);
+
+    // Check if PDF export is requested
+    if (isset($_POST['export_pdf'])) {
+        // Start output buffering to prevent premature output
+        ob_end_clean(); // Clean the previous buffer if any
+
+        // Include the FPDF library
+        require_once get_template_directory() . '/reward-point/fpdf/fpdf.php';
+
+        // Check if logs are empty
+        if (empty($logs)) {
+            echo 'No data available for export.';
+            exit;
+        }
+
+        // Create a new PDF instance
+        $pdf = new FPDF();
+        $pdf->AddPage();
+        $pdf->SetFont('Arial', 'B', 10);
+
+        // Add table headers
+        $pdf->Cell(10, 10, 'SL', 1);
+        $pdf->Cell(30, 10, 'Username', 1);
+        $pdf->Cell(30, 10, 'Name', 1);
+        $pdf->Cell(30, 10, 'Role', 1);
+        $pdf->Cell(30, 10, 'Point Source', 1);
+        $pdf->Cell(30, 10, 'Date', 1);
+        $pdf->Cell(20, 10, 'Points', 1);
+        $pdf->Ln();
+
+        // Add data to the PDF
+        $serial_number = 1;
+        foreach ($logs as $log) {
+            $user_info = get_userdata($log->user_id);
+
+            // Ensure $user_info is valid
+            if ($user_info) {
+                $pdf->Cell(10, 10, $serial_number++, 1);
+                $pdf->Cell(30, 10, $user_info->user_login, 1);
+                $pdf->Cell(30, 10, $user_info->display_name, 1);
+                $pdf->Cell(30, 10, implode(', ', $user_info->roles), 1);
+                $pdf->Cell(30, 10, $log->point_source, 1);
+                $pdf->Cell(30, 10, date('Y-m-d', strtotime($log->log_date)), 1);
+                $pdf->Cell(20, 10, $log->points, 1);
+                $pdf->Ln();
+            }
+        }
+
+        // Clean any buffer before sending PDF
+        ob_clean();
+
+        // Set headers for PDF download
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: attachment; filename="point_log_' . time() . '.pdf"');
+        header('Cache-Control: must-revalidate');
+        header('Pragma: public');
+
+        // Output the PDF
+        $pdf->Output('D', 'point_log_' . time() . '.pdf');
+
+        // End the buffering and exit
+        exit;
+    }
+
+    // Proceed with rendering the HTML page if no export is requested
     if (isset($_GET['tab'])) {
         $active_tab = sanitize_text_field($_GET['tab']);
     } else {
@@ -194,101 +311,100 @@ function points_rewards_submenu_callback()
             $table_name = $wpdb->prefix . 'point_log';
             ?>
 
-            <div class="wrap">
-                <h2>Customer Point List</h2>
-                <p class="search-box">
-                <form method="get" action="" style="float: right; margin: 0;">
-                    <input type="hidden" name="page" value="points-rewards">
-                    <input type="hidden" name="tab" value="manage-points">
-                    <input type="text" name="s" value="<?php echo esc_attr($search_query); ?>" placeholder="Search User">
-                    <input type="submit" value="Search" class="button">
-                </form>
-                </p>
-                <?php $user_list_table->display(); ?>
-            </div>
+                        <div class="wrap">
+                            <h2>Customer Point List</h2>
+                            <p class="search-box">
+                            <form method="get" action="" style="float: right; margin: 0;">
+                                <input type="hidden" name="page" value="points-rewards">
+                                <input type="hidden" name="tab" value="manage-points">
+                                <input type="text" name="s" value="<?php echo esc_attr($search_query); ?>" placeholder="Search User">
+                                <input type="submit" value="Search" class="button">
+                            </form>
+                            </p>
+                            <?php $user_list_table->display(); ?>
+                        </div>
 
 
-            <?php
-            break;
+                        <?php
+                        break;
         case 'point-log':
-            
+
             //points_page_callback();
             //==================================================================
 
-           // Retrieve the user's point log
-global $wpdb;
-$table_name = $wpdb->prefix . 'point_log';
+            // Retrieve the user's point log
+            global $wpdb;
+            $table_name = $wpdb->prefix . 'point_log';
 
-// Get the search query if submitted
-$search_query = isset($_GET['search']) ? sanitize_text_field($_GET['search']) : '';
+            // Get the search query if submitted
+            $search_query = isset($_GET['search']) ? sanitize_text_field($_GET['search']) : '';
 
-// Get the start and end dates from the form
-$start_date = isset($_GET['start_date']) ? sanitize_text_field($_GET['start_date']) : '';
-$end_date = isset($_GET['end_date']) ? sanitize_text_field($_GET['end_date']) : '';
+            // Get the start and end dates from the form
+            $start_date = isset($_GET['start_date']) ? sanitize_text_field($_GET['start_date']) : '';
+            $end_date = isset($_GET['end_date']) ? sanitize_text_field($_GET['end_date']) : '';
 
-// Get the selected point sources from the form (multiple select)
-$selected_sources = isset($_GET['point_sources']) ? array_map('sanitize_text_field', $_GET['point_sources']) : [];
+            // Get the selected point sources from the form (multiple select)
+            $selected_sources = isset($_GET['point_sources']) ? array_map('sanitize_text_field', $_GET['point_sources']) : [];
 
-// Base query to retrieve logs
-$query = "SELECT * FROM {$table_name} WHERE 1=1";
+            // Base query to retrieve logs
+            $query = "SELECT * FROM {$table_name} WHERE 1=1";
 
-// If a search query is provided, add the WHERE clause to filter logs by user ID
-if (!empty($search_query)) {
-    $query .= $wpdb->prepare(
-        " AND user_id IN (
-            SELECT ID FROM {$wpdb->users} WHERE user_login LIKE %s
-        )",
-        '%' . $search_query . '%'
-    );
-}
+            // If a search query is provided, add the WHERE clause to filter logs by user ID
+            if (!empty($search_query)) {
+                $query .= $wpdb->prepare(
+                    " AND user_id IN (
+                        SELECT ID FROM {$wpdb->users} WHERE user_login LIKE %s
+                    )",
+                    '%' . $search_query . '%'
+                );
+            }
 
-// Add conditions for date filtering
-if (!empty($start_date) && !empty($end_date)) {
-    // Filter by date range if both start and end dates are provided
-    $query .= $wpdb->prepare(
-        " AND DATE(log_date) BETWEEN %s AND %s",
-        $start_date,
-        $end_date
-    );
-} elseif (!empty($start_date)) {
-    // Filter from start date onwards if only start date is provided
-    $query .= $wpdb->prepare(
-        " AND DATE(log_date) >= %s",
-        $start_date
-    );
-} elseif (!empty($end_date)) {
-    // Filter up to the end date if only end date is provided
-    $query .= $wpdb->prepare(
-        " AND DATE(log_date) <= %s",
-        $end_date
-    );
-}
+            // Add conditions for date filtering
+            if (!empty($start_date) && !empty($end_date)) {
+                // Filter by date range if both start and end dates are provided
+                $query .= $wpdb->prepare(
+                    " AND DATE(log_date) BETWEEN %s AND %s",
+                    $start_date,
+                    $end_date
+                );
+            } elseif (!empty($start_date)) {
+                // Filter from start date onwards if only start date is provided
+                $query .= $wpdb->prepare(
+                    " AND DATE(log_date) >= %s",
+                    $start_date
+                );
+            } elseif (!empty($end_date)) {
+                // Filter up to the end date if only end date is provided
+                $query .= $wpdb->prepare(
+                    " AND DATE(log_date) <= %s",
+                    $end_date
+                );
+            }
 
-// If point sources are selected, filter logs by point source
-if (!empty($selected_sources)) {
-    $placeholders = implode(', ', array_fill(0, count($selected_sources), '%s'));
-    $query .= $wpdb->prepare(
-        " AND point_source IN ($placeholders)",
-        ...$selected_sources
-    );
-}
+            // If point sources are selected, filter logs by point source
+            if (!empty($selected_sources)) {
+                $placeholders = implode(', ', array_fill(0, count($selected_sources), '%s'));
+                $query .= $wpdb->prepare(
+                    " AND point_source IN ($placeholders)",
+                    ...$selected_sources
+                );
+            }
 
-// Add the ORDER BY clause
-$query .= " ORDER BY `id` DESC";
+            // Add the ORDER BY clause
+            $query .= " ORDER BY `id` DESC";
 
-// Pagination variables
-$per_page = 20;
-$current_page = isset($_GET['paged']) ? absint($_GET['paged']) : 1;
-$offset = ($current_page - 1) * $per_page;
-$total_logs = $wpdb->get_var("SELECT COUNT(*) FROM ({$query}) AS total_logs");
-$total_pages = ceil($total_logs / $per_page);
+            // Pagination variables
+            $per_page = 20;
+            $current_page = isset($_GET['paged']) ? absint($_GET['paged']) : 1;
+            $offset = ($current_page - 1) * $per_page;
+            $total_logs = $wpdb->get_var("SELECT COUNT(*) FROM ({$query}) AS total_logs");
+            $total_pages = ceil($total_logs / $per_page);
 
-// Add the LIMIT clause for pagination
-$query .= " LIMIT {$per_page} OFFSET {$offset}";
+            // Add the LIMIT clause for pagination
+            $query .= " LIMIT {$per_page} OFFSET {$offset}";
 
-// Retrieve the logs
-$logs = $wpdb->get_results($query);
-
+            // Retrieve the logs
+            $logs = $wpdb->get_results($query);
 
 
             // Display the point log
@@ -296,194 +412,276 @@ $logs = $wpdb->get_results($query);
                 $point_and_reward = get_option('point_and_reward', 0);
                 echo '<div class="wrap">';
                 echo '<h2>Point Log</h2>';
-                echo '<p class="search-box" style="float: right; margin: 0;"><form method="get" action="" style="float: right; margin: 15px 0px;">';
+                echo '<p class="search-box" style="float: right; margin: 0;">';
+
+
+
+
+
+// Excel Export
+if (isset($_POST['export_excel'])) {
+    // Include SimpleXLSXGen library
+    require_once(get_template_directory() . '/reward-point/excel/src/SimpleXLSXGen.php');
+
+
+    global $wpdb;
+
+    // Fetch data
+    $logs = $wpdb->get_results("SELECT * FROM wp_point_log");
+
+    // Check if data exists
+    if (empty($logs)) {
+        echo 'No data available for export.';
+        return;
+    }
+
+    // Prepare data for Excel
+    $xlsxData = [['SL', 'Username', 'Name', 'Role', 'Point Source', 'Date', 'Points']];
+    $serial_number = 1;
+
+    foreach ($logs as $log) {
+        $user_info = get_userdata($log->user_id);
+
+        if ($user_info) {
+            $xlsxData[] = [
+                $serial_number++,
+                $user_info->user_login,
+                $user_info->display_name,
+                implode(', ', $user_info->roles),
+                $log->point_source,
+                date('Y-m-d', strtotime($log->log_date)),
+                $log->points
+            ];
+        }
+    }
+
+    // Generate Excel file
+    $xlsx = SimpleXLSXGen::fromArray($xlsxData);
+
+    // Download the Excel file
+    $xlsx->downloadAs('point_log_' . time() . '.xlsx');
+    exit;
+}
+
+// if (class_exists('SimpleXLSXGen')) {
+//     echo '<br/>Class found!';
+// } else {
+//     echo '<br/>Class not found!';
+// }
+
+
+                                               
+                echo '<div class="form-container"><form method="get" action="" class="form1">';
+
+                // Add a multiple select dropdown for point sources
+                echo '<label>Point Source: </label>'; ?>
+
+                            <select class="tag-select" name="point_sources[]">
+                                <option value="" disabled selected>Select Point Source</option>
+                                <option value=""  <?php echo isset($_GET['point_sources']) && in_array('', (array) $_GET['point_sources']) ? 'selected' : ''; ?>>Unknown Source</option>
+                                <option value="purchase" <?php echo isset($_GET['point_sources']) && in_array('purchase', (array) $_GET['point_sources']) ? 'selected' : ''; ?>>Purchase</option>
+                                <option value="admin_adjustment" <?php echo isset($_GET['point_sources']) && in_array('admin_adjustment', (array) $_GET['point_sources']) ? 'selected' : ''; ?>>Admin Adjustment</option>
+                                <option value="redeem" <?php echo isset($_GET['point_sources']) && in_array('redeem', (array) $_GET['point_sources']) ? 'selected' : ''; ?>>Redeem</option>
+                                <option value="signup_bonus" <?php echo isset($_GET['point_sources']) && in_array('signup_bonus', (array) $_GET['point_sources']) ? 'selected' : ''; ?>>Signup Bonus</option>
+                                <option value="signup_ref" <?php echo isset($_GET['point_sources']) && in_array('signup_ref', (array) $_GET['point_sources']) ? 'selected' : ''; ?>>Referral Bonus</option>
+                                <option value="ref_signup" <?php echo isset($_GET['point_sources']) && in_array('ref_signup', (array) $_GET['point_sources']) ? 'selected' : ''; ?>>Signup Referral Bonus</option>
+                            </select>
+
+                               <?php // Add Date range
+                                               echo '<label>Date Range: </label>';
+                                               echo '<input type="date" name="start_date" value="' . esc_attr($_GET['start_date'] ?? '') . '" placeholder="Start Date">';
+                                               echo ' - ';
+                                               echo '<input type="date" name="end_date" value="' . esc_attr($_GET['end_date'] ?? '') . '" placeholder="End Date">';
+
+
+
+
+                                               echo '<input type="hidden" name="page" value="points-rewards">';
+                                               echo '<input type="hidden" name="tab" value="point-log">';
+                                               echo '<input type="text" name="search" value="' . esc_attr($search_query) . '" placeholder="Search user by username">';
+                                               echo '<input type="submit" class="button" value="Filter">';
+                                               echo '</form>';
+                                               // Include FPDF library and other necessary files
+                                               echo '<form method="post" action="" class="form2">';
+                                               echo '<input type="submit" name="export_pdf" class="button" value="Export to PDF">';
+                                               echo '<input type="submit" name="export_excel" class="button" value="Export to Excel">';
+                                               echo '</form></div>';
+                                               //print_r($logs);
+                               
+                                               echo '<table class="wp-list-table widefat striped">';
+                                               echo '<thead><tr><th>SL</th><th>Username</th><th>Name</th><th>Role</th><th>Point Source</th><th>Date</th><th>Points</th></tr></thead><tbody>';
+                                               $serial_number = $offset + 1;
+                                               foreach ($logs as $log) {
+                                                   $log_date = strtotime($log->log_date);
+                                                   $user_id = $log->user_id;
+                                                   $user_info = get_userdata($user_id);
+
+                                                   // Check if user_info is not false and is an object before accessing its properties
+                                                   if ($user_info && is_object($user_info)) {
+                                                       $user_login = $user_info->user_login;
+                                                       $display_name = $user_info->display_name;
+                                                       $user_roles = $user_info->roles;
+                                                   } else {
+                                                       $user_login = 'N/A'; // Default value if user_info is false or not an object
+                                                       $display_name = 'N/A'; // Default value if user_info is false or not an object
+                                                       $user_roles = array(); // Default empty array if user_info is false or not an object
+                                                   }
+
+                                                   $current_time = current_time('timestamp');
+
+                                                   if (date('Y-m-d', $log_date) === date('Y-m-d', $current_time)) {
+                                                       $human_date = human_time_diff($log_date, $current_time) . ' ago';
+                                                   } else {
+                                                       $human_date = date('j F, Y \a\t g:i A', $log_date);
+                                                   }
+
+                                                   $point_source = $log->point_source;
+                                                   $reason = $log->reason;
+                                                   if (!$reason) {
+                                                       $reason = 'for unknown reason';
+                                                   } else {
+                                                       $reason = 'for ' . $reason;
+                                                   }
+                                                   $log_order_id = $log->order_id;
+                                                   $order = wc_get_order($log_order_id);
+                                                   $view_order_url = admin_url('post.php?post=' . $log_order_id . '&action=edit');
+                                                   if ($point_source === 'purchase') {
+                                                       $point_source_text = 'Earned for Purchase <a href="' . $view_order_url . '">#' . $log_order_id . '</a>';
+                                                   } elseif ($point_source === 'admin_adjustment') {
+                                                       $point_source_text = 'Point Adjusted by Admin ' . $reason;
+                                                   } elseif ($point_source === 'redeem') {
+                                                       $point_source_text = 'Deducted for Redeeming <a href="' . $view_order_url . '">#' . $log_order_id . '</a>';
+
+                                                   } elseif ($point_source === 'signup_bonus') {
+                                                       $point_source_text = 'Signup Bonus';
+                                                   } elseif ($point_source === 'signup_ref') {
+                                                       $point_source_text = 'Referral Bonus';
+                                                   } elseif ($point_source === 'ref_signup') {
+                                                       $point_source_text = 'Signup Referral Bonus';
+                                                   } else {
+                                                       $point_source_text = 'Unknown Source';
+                                                   }
+
+                                                   // Check if $user_roles is an array before using implode()
+                                                   $user_roles_text = is_array($user_roles) ? implode(', ', $user_roles) : 'N/A';
+
+                                                   // Display the table row
+                                                   echo '<tr>';
+                                                   echo '<td>' . $serial_number . '.</td>';
+                                                   echo '<td><a href="' . esc_url(get_edit_user_link($log->user_id)) . '">' . esc_html($user_login) . '</a></td>';
+                                                   echo '<td>' . esc_html($display_name) . '</td>';
+                                                   echo '<td>' . esc_html($user_roles_text) . '</td>';
+                                                   echo '<td>' . $point_source_text . '</td>';
+                                                   echo '<td>' . esc_html($human_date) . '</td>';
+                                                   echo '<td>' . esc_html($log->points) . '</td>';
+                                                   echo '</tr>';
+
+                                                   // Increment the serial number for the next row
+                                                   $serial_number++;
+                                               }
+
+                                               echo '<tfoot><tr><th>SL</th><th>Username</th><th>Name</th><th>Role</th><th>Point Source</th><th>Date</th><th>Points</th></tr></tfoot><tbody>';
+                                               echo '</tbody></table>';
+
+                                               $pagination = paginate_links(
+                                                   array(
+                                                       'base' => add_query_arg('paged', '%#%'),
+                                                       'format' => '&paged=%#%',
+                                                       'current' => max(1, $current_page),
+                                                       'total' => $total_pages,
+                                                       'prev_text' => '&laquo;',
+                                                       'next_text' => '&raquo;',
+                                                       'type' => 'array',
+                                                   )
+                                               );
+
+                                               if (!empty($pagination)) {
+                                                   $output = '<div class="tablenav-pages" style="float: right; margin: 6px 0px 0px 0px;">';
+                                                   $output .= '<span class="displaying-num">' . number_format_i18n($total_logs) . ' items </span>';
+
+                                                   // First page link
+                                                   $output .= '<a class="button first-page ' . ($current_page === 1 ? 'disabled' : '') . '" href="' . esc_url(add_query_arg('paged', '1', get_pagenum_link(1, false))) . '">&laquo;</a>';
+
+                                                   // Previous page link
+                                                   if ($current_page > 1) {
+                                                       $output .= ' <a class="button prev-page" href="' . esc_url(add_query_arg('paged', $current_page - 1, get_pagenum_link($current_page - 1, false))) . '">&lsaquo;</a> ';
+                                                   } else {
+                                                       $output .= ' <a class="button prev-page disabled" href="#">&lsaquo;</a> ';
+                                                   }
+
+                                                   // Page input box
+                                                   $output .= '<span class="paging-input">';
+                                                   $output .= '<label for="current-page-selector" class="screen-reader-text">Current Page</label>';
+                                                   $output .= '<input class="current-page" id="current-page-selector" type="number" name="paged" min="1" max="' . $total_pages . '" value="' . $current_page . '" size="1" aria-describedby="table-paging" />';
+                                                   $output .= '<span class="tablenav-paging-text"> of <span class="total-pages">' . $total_pages . '</span></span> ';
+                                                   $output .= '</span>';
+
+                                                   // Next page link
+                                                   if ($current_page < $total_pages) {
+                                                       $output .= '<a class="button next-page" href="' . esc_url(add_query_arg('paged', $current_page + 1, get_pagenum_link($current_page + 1, false))) . '">&rsaquo;</a>';
+                                                   } else {
+                                                       $output .= '<a class="button next-page disabled" href="#">&rsaquo;</a>';
+                                                   }
+
+                                                   // Last page link
+                                                   if ($current_page >= $total_pages) {
+                                                       $output .= ' <a class="button last-page disabled" href="#">&raquo</a>';
+                                                   } else {
+                                                       $output .= ' <a class="button last-page" href="' . esc_url(add_query_arg('paged', $total_pages, get_pagenum_link($total_pages, false))) . '">&raquo;</a>';
+                                                   }
+
+
+                                                   // Pagination links
+                                                   $output .= '<span class="pagination-links">';
+
+                                                   $output .= '</span>';
+
+                                                   $output .= '</div>';
+                                                   echo $output;
+                                               }
+                                               ?>
+                                <script>
+                                    // JavaScript to handle form submission when the user enters a page number and hits Enter
+                                    document.addEventListener('DOMContentLoaded', function () {
+                                        const pageInput = document.querySelector('.current-page');
+                                        pageInput.addEventListener('keydown', function (event) {
+                                            if (event.keyCode === 13) {
+                                                event.preventDefault();
+                                                const page = parseInt(pageInput.value);
+                                                const totalPages = parseInt(document.querySelector('.total-pages').textContent);
+                                                if (page >= 1 && page <= totalPages) {
+                                                    // Get the current URL
+                                                    const currentURL = new URL(window.location.href);
+                                                    // Update the 'paged' parameter in the query string
+                                                    currentURL.searchParams.set('paged', page);
+                                                    // Navigate to the updated URL
+                                                    window.location.href = currentURL.toString();
+                                                }
+                                            }
+                                        });
+                                    });
+                                </script>
+
+                                <?php
+
+                                echo '</div>';
+            } else {
+                echo '<div class="wrap">';
+                echo '<h2>Point Log</h2>';
+                echo '<div class="form-container"><form method="get" action="" class="form1">';
 
                 // Add a multiple select dropdown for point sources
                 echo '<label>Point Source: </label>';
                 echo '<select class="tag-select" name="point_sources[]" Placeholder="Select Point Source">
-                <option value="">Select Point Source</option>
-                <option value="purchase">Purchase</option>
-                <option value="admin_adjustment">Admin Adjustment</option>
-                <option value="redeem">Redeem</option>
-                <option value="signup_bonus">Signup Bonus</option>
-                <option value="signup_ref">Referral Bonus</option>
-                <option value="ref_signup">Signup Referral Bonus</option>
-                </select>';
+                 <option value="">Select Point Source</option>
+                 <option value="purchase">Purchase</option>
+                 <option value="admin_adjustment">Admin Adjustment</option>
+                 <option value="redeem">Redeem</option>
+                 <option value="signup_bonus">Signup Bonus</option>
+                 <option value="signup_ref">Referral Bonus</option>
+                 <option value="ref_signup">Signup Referral Bonus</option>
+                 </select>';
 
-                // Add Date range
-                echo '<label>Date Range: </label>';
-                echo '<input type="date" name="start_date" value="' . esc_attr($_GET['start_date'] ?? '') . '" placeholder="Start Date">';
-                echo ' - ';
-                echo '<input type="date" name="end_date" value="' . esc_attr($_GET['end_date'] ?? '') . '" placeholder="End Date">';
-
-
-                echo '<input type="hidden" name="page" value="points-rewards">';
-                echo '<input type="hidden" name="tab" value="point-log">';
-                echo '<input type="text" name="search" value="' . esc_attr($search_query) . '" placeholder="Search user by username">';
-                echo '<input type="submit" class="button" value="Search">';
-                echo '</form></p>';
-                //print_r($logs);
-
-                echo '<table class="wp-list-table widefat striped">';
-                echo '<thead><tr><th>SL</th><th>Username</th><th>Name</th><th>Role</th><th>Point Source</th><th>Date</th><th>Points</th></tr></thead><tbody>';
-                $serial_number = $offset + 1;
-                foreach ($logs as $log) {
-                    $log_date = strtotime($log->log_date);
-                    $user_id = $log->user_id;
-                    $user_info = get_userdata($user_id);
-
-                    // Check if user_info is not false and is an object before accessing its properties
-                    if ($user_info && is_object($user_info)) {
-                        $user_login = $user_info->user_login;
-                        $display_name = $user_info->display_name;
-                        $user_roles = $user_info->roles;
-                    } else {
-                        $user_login = 'N/A'; // Default value if user_info is false or not an object
-                        $display_name = 'N/A'; // Default value if user_info is false or not an object
-                        $user_roles = array(); // Default empty array if user_info is false or not an object
-                    }
-
-                    $current_time = current_time('timestamp');
-
-                    if (date('Y-m-d', $log_date) === date('Y-m-d', $current_time)) {
-                        $human_date = human_time_diff($log_date, $current_time) . ' ago';
-                    } else {
-                        $human_date = date('j F, Y \a\t g:i A', $log_date);
-                    }
-
-                    $point_source = $log->point_source;
-                    $reason = $log->reason;
-                    if (!$reason) {
-                        $reason = 'for unknown reason';
-                    } else {
-                        $reason = 'for ' . $reason;
-                    }
-                    $log_order_id = $log->order_id;
-                    $order = wc_get_order($log_order_id);
-                    $view_order_url = admin_url('post.php?post=' . $log_order_id . '&action=edit');
-                    if ($point_source === 'purchase') {
-                        $point_source_text = 'Earned for Purchase <a href="'.$view_order_url . '">#' . $log_order_id . '</a>';
-                    } elseif ($point_source === 'admin_adjustment') {
-                        $point_source_text = 'Point Adjusted by Admin ' . $reason;
-                    } elseif ($point_source === 'redeem') {
-                        $point_source_text = 'Deducted for Redeeming <a href="'.$view_order_url . '">#' . $log_order_id . '</a>';
-                    
-                    } elseif ($point_source === 'signup_bonus'){
-                        $point_source_text= 'Signup Bonus';
-                    } elseif ($point_source === 'signup_ref'){
-                        $point_source_text= 'Referral Bonus';
-                    }elseif ($point_source === 'ref_signup'){
-                        $point_source_text= 'Signup Referral Bonus';
-                    }
-                    else {
-                        $point_source_text = 'Unknown Source';
-                    }
-
-                    // Check if $user_roles is an array before using implode()
-                    $user_roles_text = is_array($user_roles) ? implode(', ', $user_roles) : 'N/A';
-
-                    // Display the table row
-                    echo '<tr>';
-                    echo '<td>' . $serial_number . '.</td>';
-                    echo '<td><a href="' . esc_url(get_edit_user_link($log->user_id)) . '">' . esc_html($user_login) . '</a></td>';
-                    echo '<td>' . esc_html($display_name) . '</td>';
-                    echo '<td>' . esc_html($user_roles_text) . '</td>';
-                    echo '<td>' . $point_source_text . '</td>';
-                    echo '<td>' . esc_html($human_date) . '</td>';
-                    echo '<td>' . esc_html($log->points) . '</td>';
-                    echo '</tr>';
-
-                    // Increment the serial number for the next row
-                    $serial_number++;
-                }
-
-                echo '<tfoot><tr><th>SL</th><th>Username</th><th>Name</th><th>Role</th><th>Point Source</th><th>Date</th><th>Points</th></tr></tfoot><tbody>';
-                echo '</tbody></table>';
-
-                $pagination = paginate_links(
-                    array(
-                        'base' => add_query_arg('paged', '%#%'),
-                        'format' => '&paged=%#%',
-                        'current' => max(1, $current_page),
-                        'total' => $total_pages,
-                        'prev_text' => '&laquo;',
-                        'next_text' => '&raquo;',
-                        'type' => 'array',
-                    )
-                );
-
-                if (!empty($pagination)) {
-                    $output = '<div class="tablenav-pages" style="float: right; margin: 6px 0px 0px 0px;">';
-                    $output .= '<span class="displaying-num">' . number_format_i18n($total_logs) . ' items </span>';
-
-                    // First page link
-                    $output .= '<a class="button first-page ' . ($current_page === 1 ? 'disabled' : '') . '" href="' . esc_url(add_query_arg('paged', '1', get_pagenum_link(1, false))) . '">&laquo;</a>';
-
-                    // Previous page link
-                    if ($current_page > 1) {
-                        $output .= ' <a class="button prev-page" href="' . esc_url(add_query_arg('paged', $current_page - 1, get_pagenum_link($current_page - 1, false))) . '">&lsaquo;</a> ';
-                    } else {
-                        $output .= ' <a class="button prev-page disabled" href="#">&lsaquo;</a> ';
-                    }
-
-                    // Page input box
-                    $output .= '<span class="paging-input">';
-                    $output .= '<label for="current-page-selector" class="screen-reader-text">Current Page</label>';
-                    $output .= '<input class="current-page" id="current-page-selector" type="number" name="paged" min="1" max="' . $total_pages . '" value="' . $current_page . '" size="1" aria-describedby="table-paging" />';
-                    $output .= '<span class="tablenav-paging-text"> of <span class="total-pages">' . $total_pages . '</span></span> ';
-                    $output .= '</span>';
-
-                    // Next page link
-                    if ($current_page < $total_pages) {
-                        $output .= '<a class="button next-page" href="' . esc_url(add_query_arg('paged', $current_page + 1, get_pagenum_link($current_page + 1, false))) . '">&rsaquo;</a>';
-                    } else {
-                        $output .= '<a class="button next-page disabled" href="#">&rsaquo;</a>';
-                    }
-
-                    // Last page link
-                    if ($current_page >= $total_pages) {
-                        $output .= ' <a class="button last-page disabled" href="#">&raquo</a>';
-                    } else {
-                        $output .= ' <a class="button last-page" href="' . esc_url(add_query_arg('paged', $total_pages, get_pagenum_link($total_pages, false))) . '">&raquo;</a>';
-                    }
-
-
-                    // Pagination links
-                    $output .= '<span class="pagination-links">';
-
-                    $output .= '</span>';
-
-                    $output .= '</div>';
-                    echo $output;
-                }
-                ?>
-                <script>
-                    // JavaScript to handle form submission when the user enters a page number and hits Enter
-                    document.addEventListener('DOMContentLoaded', function () {
-                        const pageInput = document.querySelector('.current-page');
-                        pageInput.addEventListener('keydown', function (event) {
-                            if (event.keyCode === 13) {
-                                event.preventDefault();
-                                const page = parseInt(pageInput.value);
-                                const totalPages = parseInt(document.querySelector('.total-pages').textContent);
-                                if (page >= 1 && page <= totalPages) {
-                                    // Get the current URL
-                                    const currentURL = new URL(window.location.href);
-                                    // Update the 'paged' parameter in the query string
-                                    currentURL.searchParams.set('paged', page);
-                                    // Navigate to the updated URL
-                                    window.location.href = currentURL.toString();
-                                }
-                            }
-                        });
-                    });
-                </script>
-
-                <?php
-
-                echo '</div>';
-            } else {
-                echo '<p class="search-box" style="float: right; margin: 0;"><form method="get" action="" style="float: right; margin: 15px 0px;">';
 
                 echo '<label>Date Range: </label>';
                 echo '<input type="date" name="start_date" value="' . esc_attr($_GET['start_date'] ?? '') . '" placeholder="Start Date">';
@@ -495,7 +693,13 @@ $logs = $wpdb->get_results($query);
                 echo '<input type="hidden" name="tab" value="point-log">';
                 echo '<input type="text" name="search" value="' . esc_attr($search_query) . '" placeholder="Search user by username">';
                 echo '<input type="submit" class="button" value="Search">';
-                echo '</form></p>';
+                echo '</form>';
+                // Include FPDF library and other necessary files
+                echo '<form method="post" action="" class="form2">';
+                echo '<input type="submit" name="export_pdf" class="button" value="Export to PDF">';
+                echo '<input type="submit" name="export_excel" class="button" value="Export to Excel">';
+                echo '</form></div>';
+
                 echo '<table class="wp-list-table widefat striped">';
                 echo '<thead><tr><th>SL</th><th>Username</th><th>Name</th><th>Role</th><th>Point Source</th><th>Date</th><th>Points</th></tr></thead><tbody>';
                 echo '<tr><td>No Log Found</td></tr>';
@@ -542,9 +746,9 @@ $logs = $wpdb->get_results($query);
                 update_option('referrer_points_box', $referrer_points_box);
                 update_option('point_massage', $point_massage);
 
-               //echo '<div class="notice notice-success"><p><strong>Point settings saved.</strong></p></div>';
+                //echo '<div class="notice notice-success"><p><strong>Point settings saved.</strong></p></div>';
                 echo '<div class="success-notice"><p><strong>Point settings saved.</strong></p></div>';
-                
+
             }
             // Get the current point and reward status, conversation rates, and point redemption from the database
             $point_and_reward = get_option('point_and_reward', 0);
@@ -554,7 +758,7 @@ $logs = $wpdb->get_results($query);
             $redemption_conversation_rate_point = get_option('redemption_conversation_rate_point', '');
             $redemption_conversation_rate_taka = get_option('redemption_conversation_rate_taka', '');
             $total_purchase_point = get_option('total_purchase_point', 0);
-            $signup_point=get_option('signup_point', 0);
+            $signup_point = get_option('signup_point', 0);
             $admin_point_adjust = get_option('admin_point_adjust', 0);
             $signup_points_box = get_option('signup_points_box', 0);
             $ref_system = get_option('ref_system', 0);
@@ -563,158 +767,148 @@ $logs = $wpdb->get_results($query);
             $point_massage = get_option('point_massage', 0);
             ?>
 
-            <div id="point-settings" class="wrap">
-                <form method="post" action="">
+                        <div id="point-settings" class="wrap">
+                            <form method="post" action="">
                
-                <div class="container tbl-group">
-                    <div class="full-width-div">Point Settings</div>
-                    <div class="left-width-div">
-                        <label for="point_and_reward">Enable Points Reward:</label>
-                        <span class="custom-tooltip" tabindex="0" aria-label="Toggle this to enable this feature">
-    <span class="tooltip-icon">?</span>
-</span>
-                </div>
-                    <div class="right-width-div right-div-ht">
-                        <div class="toggle-switch">
-                                                    <input type="checkbox" class="toggle" id="point_and_reward" name="point_and_reward" <?php echo checked($point_and_reward, 1); ?>>
-                                        <label class="toggle-slider" for="point_and_reward"></label>
-                                    </div>
-                                </div>
-                                <div class="left-width-div">
-                                    <label for="point_conversation_rate_point">Earn Point Conversation Rate:</label>
-                                    <span class="custom-tooltip" tabindex="0" aria-label="Enter Point Earning rate">
-    <span class="tooltip-icon">?</span>
-</span>
-                                </div>
-                                <div class="right-width-div"><input type="number" id="point_conversation_rate_point"
-                                        name="point_conversation_rate_point" placeholder="Point"
-                                        value="<?php echo esc_attr($point_conversation_rate_point); ?>" class="pts-input" required>
-                                    <label for="point_conversation_rate_taka"> Point(s) on every </label>
-                                    <input type="number" id="point_conversation_rate_taka" name="point_conversation_rate_taka" placeholder="Taka"
-                                        value="<?php echo esc_attr($point_conversation_rate_taka); ?>" class="pts-input" required>
-                                    <label for="point_conversation_rate_taka"> Taka Purchase </label>
-                                </div>
-                            </div>
-
-
-
                             <div class="container tbl-group">
-                    <div class="full-width-div">Point Redemption Settings</div>
-                    <div class="left-width-div">
-                        <label for="point_and_reward">Enable Points Redemption:</label>
-                        <span class="custom-tooltip" tabindex="0" aria-label="Toggle this to enable this feature">
-    <span class="tooltip-icon">?</span>
-</span>
-                </div>
-                    <div class="right-width-div right-div-ht">
-                    <div class="toggle-switch">
-                                                                                        <input type="checkbox" class="toggle" id="point_redemption" name="point_redemption" <?php echo checked($point_redemption, 1); ?>>
-                                        <label class="toggle-slider" for="point_redemption"></label>
-                                    </div>
+                                <div class="full-width-div">Point Settings</div>
+                                <div class="left-width-div">
+                                    <label for="point_and_reward">Enable Points Reward:</label>
+                                    <span class="custom-tooltip" tabindex="0" aria-label="Toggle this to enable this feature">
+                <span class="tooltip-icon">?</span>
+            </span>
+                            </div>
+                                <div class="right-width-div right-div-ht">
+                                    <div class="toggle-switch">
+                                                                <input type="checkbox" class="toggle" id="point_and_reward" name="point_and_reward" <?php echo checked($point_and_reward, 1); ?>>
+                                                    <label class="toggle-slider" for="point_and_reward"></label>
+                                                </div>
                                             </div>
                                             <div class="left-width-div">
-                                            <label for="redemption_conversation_rate_taka">Redemption Conversation Rate:</label>
-                                            <span class="custom-tooltip" tabindex="0" aria-label="Enter Point Redeemption rate">
-    <span class="tooltip-icon">?</span>
-</span>
+                                                <label for="point_conversation_rate_point">Earn Point Conversation Rate:</label>
+                                                <span class="custom-tooltip" tabindex="0" aria-label="Enter Point Earning rate">
+                <span class="tooltip-icon">?</span>
+            </span>
                                             </div>
-                                            <div class="right-width-div">
-                                            <input type="number" class="pts-input" id="redemption_conversation_rate_point"
-                                        name="redemption_conversation_rate_point"
-                                        value="<?php echo esc_attr($redemption_conversation_rate_point); ?>" <?php if ($point_redemption == 1) {
-                                               echo 'required';
-                                           } else {
-                                               echo '';
-                                           } ?>><label
-                                        for="redemption_conversation_rate_taka"> Point(s)= </label><input type="number"
-                                        class="pts-input" id="redemption_conversation_rate_taka"
-                                        name="redemption_conversation_rate_taka"
-                                        value="<?php echo esc_attr($redemption_conversation_rate_taka); ?>" <?php if ($point_redemption == 1) {
-                                               echo 'required';
-                                           } else {
-                                               echo '';
-                                           } ?>><label
-                                        for="redemption_conversation_rate_taka"> Taka</label>
+                                            <div class="right-width-div"><input type="number" id="point_conversation_rate_point"
+                                                    name="point_conversation_rate_point" placeholder="Point"
+                                                    value="<?php echo esc_attr($point_conversation_rate_point); ?>" class="pts-input" required>
+                                                <label for="point_conversation_rate_taka"> Point(s) on every </label>
+                                                <input type="number" id="point_conversation_rate_taka" name="point_conversation_rate_taka" placeholder="Taka"
+                                                    value="<?php echo esc_attr($point_conversation_rate_taka); ?>" class="pts-input" required>
+                                                <label for="point_conversation_rate_taka"> Taka Purchase </label>
                                             </div>
                                         </div>
 
+
+
                                         <div class="container tbl-group">
-                                            <div class="full-width-div">Signup Point Setting</div>
-                                                <div class="left-width-div">
-                                                    <label for="signup_point">Enable Point Earn by Signup</label>
-                                                        <span class="custom-tooltip" tabindex="0" aria-label="Toggle this to enable this feature">
-                                                            <span class="tooltip-icon">?</span>
-                                                        </span>
+                                <div class="full-width-div">Point Redemption Settings</div>
+                                <div class="left-width-div">
+                                    <label for="point_and_reward">Enable Points Redemption:</label>
+                                    <span class="custom-tooltip" tabindex="0" aria-label="Toggle this to enable this feature">
+                <span class="tooltip-icon">?</span>
+            </span>
+                            </div>
+                                <div class="right-width-div right-div-ht">
+                                <div class="toggle-switch">
+                                                                                                    <input type="checkbox" class="toggle" id="point_redemption" name="point_redemption" <?php echo checked($point_redemption, 1); ?>>
+                                                    <label class="toggle-slider" for="point_redemption"></label>
                                                 </div>
-                                                <div class="right-width-div right-div-ht">
-                                                    <div class="toggle-switch">
-                                                        <input type="checkbox" class="toggle" id="signup_point" name="signup_point" <?php echo checked($signup_point, 1); ?>>
-                                                        <label class="toggle-slider" for="signup_point"></label>
+                                                        </div>
+                                                        <div class="left-width-div">
+                                                        <label for="redemption_conversation_rate_taka">Redemption Conversation Rate:</label>
+                                                        <span class="custom-tooltip" tabindex="0" aria-label="Enter Point Redeemption rate">
+                <span class="tooltip-icon">?</span>
+            </span>
+                                                        </div>
+                                                        <div class="right-width-div">
+                                                        <input type="number" class="pts-input" id="redemption_conversation_rate_point"
+                                                    name="redemption_conversation_rate_point"
+                                                    value="<?php echo esc_attr($redemption_conversation_rate_point); ?>" <?php if ($point_redemption == 1) {
+                                                           echo 'required';
+                                                       } else {
+                                                           echo '';
+                                                       } ?>><label
+                                                    for="redemption_conversation_rate_taka"> Point(s)= </label><input type="number"
+                                                    class="pts-input" id="redemption_conversation_rate_taka"
+                                                    name="redemption_conversation_rate_taka"
+                                                    value="<?php echo esc_attr($redemption_conversation_rate_taka); ?>" <?php if ($point_redemption == 1) {
+                                                           echo 'required';
+                                                       } else {
+                                                           echo '';
+                                                       } ?>><label
+                                                    for="redemption_conversation_rate_taka"> Taka</label>
+                                                        </div>
                                                     </div>
-                                                </div>
+
+                                                    <div class="container tbl-group">
+                                                        <div class="full-width-div">Signup Point Setting</div>
+                                                            <div class="left-width-div">
+                                                                <label for="signup_point">Enable Point Earn by Signup</label>
+                                                                    <span class="custom-tooltip" tabindex="0" aria-label="Toggle this to enable this feature">
+                                                                        <span class="tooltip-icon">?</span>
+                                                                    </span>
+                                                            </div>
+                                                            <div class="right-width-div right-div-ht">
+                                                                <div class="toggle-switch">
+                                                                    <input type="checkbox" class="toggle" id="signup_point" name="signup_point" <?php echo checked($signup_point, 1); ?>>
+                                                                    <label class="toggle-slider" for="signup_point"></label>
+                                                                </div>
+                                                            </div>
                                                 
 
-                                                <div class="left-width-div">
-                                            <label for="signup_points_box">Signup Points:</label>
-                                            <span class="custom-tooltip" tabindex="0" aria-label="Customer Signup Bonus Points">
-    <span class="tooltip-icon">?</span>
-</span>
-                                            </div>
-                                            <div class="right-width-div">
-                                            <input type="number" class="pts-input" id="signup_points_box"
-                                        name="signup_points_box"
-                                        value="<?php echo esc_attr($signup_points_box); ?>" <?php if ($signup_point == 1) {
-                                               echo 'required';
-                                           } else {
-                                               echo '';
-                                           } ?>><label
-                                        for="signup_points_box"> Point(s) </label>
-                                            </div>
+                                                            <div class="left-width-div">
+                                                        <label for="signup_points_box">Signup Points:</label>
+                                                        <span class="custom-tooltip" tabindex="0" aria-label="Customer Signup Bonus Points">
+                <span class="tooltip-icon">?</span>
+            </span>
+                                                        </div>
+                                                        <div class="right-width-div">
+                                                        <input type="number" class="pts-input" id="signup_points_box"
+                                                    name="signup_points_box"
+                                                    value="<?php echo esc_attr($signup_points_box); ?>" <?php if ($signup_point == 1) {
+                                                           echo 'required';
+                                                       } else {
+                                                           echo '';
+                                                       } ?>><label
+                                                    for="signup_points_box"> Point(s) </label>
+                                                        </div>
 
-                                        </div>
-
-
-
-
-
-
-
-
-
-
-
-<div class="container tbl-group">
-                                            <div class="full-width-div">Referral Setting</div>
-                                                <div class="left-width-div">
-                                                    <label for="ref_system">Enable Referral System</label>
-                                                        <span class="custom-tooltip" tabindex="0" aria-label="Toggle this to enable this feature">
-                                                            <span class="tooltip-icon">?</span>
-                                                        </span>
-                                                </div>
-                                                <div class="right-width-div right-div-ht">
-                                                    <div class="toggle-switch">
-                                                        <input type="checkbox" class="toggle" id="ref_system" name="ref_system" <?php echo checked($ref_system, 1); ?>>
-                                                        <label class="toggle-slider" for="ref_system"></label>
                                                     </div>
-                                                </div>
+
+            <div class="container tbl-group">
+                                                        <div class="full-width-div">Referral Setting</div>
+                                                            <div class="left-width-div">
+                                                                <label for="ref_system">Enable Referral System</label>
+                                                                    <span class="custom-tooltip" tabindex="0" aria-label="Toggle this to enable this feature">
+                                                                        <span class="tooltip-icon">?</span>
+                                                                    </span>
+                                                            </div>
+                                                            <div class="right-width-div right-div-ht">
+                                                                <div class="toggle-switch">
+                                                                    <input type="checkbox" class="toggle" id="ref_system" name="ref_system" <?php echo checked($ref_system, 1); ?>>
+                                                                    <label class="toggle-slider" for="ref_system"></label>
+                                                                </div>
+                                                            </div>
                                                 
 
-                                                <div class="left-width-div">
-                                            <label for="referrer_points_box">Referrer will get:</label>
-                                            <span class="custom-tooltip" tabindex="0" aria-label="Customer Signup Bonus Points">
-    <span class="tooltip-icon">?</span>
-</span>
-                                            </div>
-                                            <div class="right-width-div">
-                                            <input type="number" class="pts-input" id="referrer_points_box"
-                                        name="referrer_points_box"
-                                        value="<?php echo esc_attr($referrer_points_box); ?>" <?php if ($ref_system == 1) {
-                                               echo 'required';
-                                           } else {
-                                               echo '';
-                                           } ?>><label
-                                        for="referrer_points_box"> Point(s) </label>
-                                            </div>
+                                                            <div class="left-width-div">
+                                                        <label for="referrer_points_box">Referrer will get:</label>
+                                                        <span class="custom-tooltip" tabindex="0" aria-label="Customer Signup Bonus Points">
+                <span class="tooltip-icon">?</span>
+            </span>
+                                                        </div>
+                                                        <div class="right-width-div">
+                                                        <input type="number" class="pts-input" id="referrer_points_box"
+                                                    name="referrer_points_box"
+                                                    value="<?php echo esc_attr($referrer_points_box); ?>" <?php if ($ref_system == 1) {
+                                                           echo 'required';
+                                                       } else {
+                                                           echo '';
+                                                       } ?>><label
+                                                    for="referrer_points_box"> Point(s) </label>
+                                                        </div>
 
 
 
@@ -722,118 +916,93 @@ $logs = $wpdb->get_results($query);
 
 
 
-                                            <div class="left-width-div">
-                                            <label for="ref_user_points_box">Referrered user will get:</label>
-                                            <span class="custom-tooltip" tabindex="0" aria-label="Customer Signup Bonus Points">
-    <span class="tooltip-icon">?</span>
-</span>
-                                            </div>
-                                            <div class="right-width-div">
-                                            <input type="number" class="pts-input" id="ref_user_points_box"
-                                        name="ref_user_points_box"
-                                        value="<?php echo esc_attr($ref_user_points_box); ?>" <?php if ($ref_system == 1) {
-                                               echo 'required';
-                                           } else {
-                                               echo '';
-                                           } ?>><label
-                                        for="ref_user_points_box"> Point(s) </label>
-                                            </div>
+                                                        <div class="left-width-div">
+                                                        <label for="ref_user_points_box">Referrered user will get:</label>
+                                                        <span class="custom-tooltip" tabindex="0" aria-label="Customer Signup Bonus Points">
+                <span class="tooltip-icon">?</span>
+            </span>
+                                                        </div>
+                                                        <div class="right-width-div">
+                                                        <input type="number" class="pts-input" id="ref_user_points_box"
+                                                    name="ref_user_points_box"
+                                                    value="<?php echo esc_attr($ref_user_points_box); ?>" <?php if ($ref_system == 1) {
+                                                           echo 'required';
+                                                       } else {
+                                                           echo '';
+                                                       } ?>><label
+                                                    for="ref_user_points_box"> Point(s) </label>
+                                                        </div>
 
-                                        </div>
+                                                    </div>
+                                                    <div class="container tbl-group">
+                                <div class="full-width-div">Other Settings</div>
 
+                                <div class="left-width-div">
+                                    <label for="total_purchase_point">Display user level in order
+                                                    page:</label>
+                                                    <span class="custom-tooltip" tabindex="0" aria-label="Toggle this to enable this feature">
+                <span class="tooltip-icon">?</span>
+            </span>
+                            </div>
+                                <div class="right-width-div right-div-ht">
+                                <div class="toggle-switch">
+                                                    <input type="checkbox" class="toggle" id="total_purchase_point" name="total_purchase_point"
+                                                        <?php echo checked($total_purchase_point, 1); ?>>
+                                                    <label class="toggle-slider" for="total_purchase_point"></label>
+                                                </div>
+                                                        </div>
+                                                        <div class="left-width-div">
+                                    <label for="point_and_reward">Enable admin point Adjust:</label>
+                                    <span class="custom-tooltip" tabindex="0" aria-label="Toggle this to enable this feature">
+                <span class="tooltip-icon">?</span>
+            </span>
+                            </div>
+                            <div class="right-width-div right-div-ht">
+                            <div class="toggle-switch">
+                                                    <input type="checkbox" class="toggle" id="admin_point_adjust" name="admin_point_adjust"
+                                                        <?php echo checked($admin_point_adjust, 1); ?>>
+                                                    <label class="toggle-slider" for="admin_point_adjust"></label>
+                                                </div>
+                                                        </div>
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                                        
-                                        <div class="container tbl-group">
-                    <div class="full-width-div">Other Settings</div>
-
-                    <div class="left-width-div">
-                        <label for="total_purchase_point">Display user level in order
-                                        page:</label>
-                                        <span class="custom-tooltip" tabindex="0" aria-label="Toggle this to enable this feature">
-    <span class="tooltip-icon">?</span>
-</span>
-                </div>
-                    <div class="right-width-div right-div-ht">
-                    <div class="toggle-switch">
-                                        <input type="checkbox" class="toggle" id="total_purchase_point" name="total_purchase_point"
-                                            <?php echo checked($total_purchase_point, 1); ?>>
-                                        <label class="toggle-slider" for="total_purchase_point"></label>
-                                    </div>
-                                            </div>
-                                            <div class="left-width-div">
-                        <label for="point_and_reward">Enable admin point Adjust:</label>
-                        <span class="custom-tooltip" tabindex="0" aria-label="Toggle this to enable this feature">
-    <span class="tooltip-icon">?</span>
-</span>
-                </div>
-                <div class="right-width-div right-div-ht">
-                <div class="toggle-switch">
-                                        <input type="checkbox" class="toggle" id="admin_point_adjust" name="admin_point_adjust"
-                                            <?php echo checked($admin_point_adjust, 1); ?>>
-                                        <label class="toggle-slider" for="admin_point_adjust"></label>
-                                    </div>
-                                            </div>
-
-                                            <div class="left-width-div">
-                        <label for="points_massage">Show points massage in single products in cart and product page:</label>
-                        <span class="custom-tooltip" tabindex="0" aria-label="Toggle this to enable this feature">
-    <span class="tooltip-icon">?</span>
-</span>
-                </div>
-                <div class="right-width-div right-div-ht">
-                <div class="toggle-switch">
-                                        <input type="checkbox" class="toggle" id="point_massage" name="point_massage"
-                                            <?php echo checked($point_massage, 1); ?>>
-                                        <label class="toggle-slider" for="point_massage"></label>
-                                    </div>
-                                            </div>
-                                        </div>
+                                                        <div class="left-width-div">
+                                    <label for="points_massage">Show points massage in single products in cart and product page:</label>
+                                    <span class="custom-tooltip" tabindex="0" aria-label="Toggle this to enable this feature">
+                <span class="tooltip-icon">?</span>
+            </span>
+                            </div>
+                            <div class="right-width-div right-div-ht">
+                            <div class="toggle-switch">
+                                                    <input type="checkbox" class="toggle" id="point_massage" name="point_massage"
+                                                        <?php echo checked($point_massage, 1); ?>>
+                                                    <label class="toggle-slider" for="point_massage"></label>
+                                                </div>
+                                                        </div>
+                                                    </div>
 
 
-                                        <div class="container tbl-group">
-                    <div class="full-width-div">Shortcodes</div>
-                    <div class="left-width-div"><label for="admin_point_adjust">Point Log Shortcode:</label>
-                    <span class="custom-tooltip" tabindex="0" aria-label="Paste [point_log] Shortcode to in a page to view point log.">
-    <span class="tooltip-icon">?</span>
-</span>
-                </div>
-                    <div class="right-width-div">
-                    Create a New Page and add the [point_log] shortcode to display the user point Log.</div>
-                                        </div>
+                                                    <div class="container tbl-group">
+                                <div class="full-width-div">Shortcodes</div>
+                                <div class="left-width-div"><label for="admin_point_adjust">Point Log Shortcode:</label>
+                                <span class="custom-tooltip" tabindex="0" aria-label="Paste [point_log] Shortcode to in a page to view point log.">
+                <span class="tooltip-icon">?</span>
+            </span>
+                            </div>
+                                <div class="right-width-div">
+                                Create a New Page and add the [point_log] shortcode to display the user point Log.</div>
+                                                    </div>
                                         
 
-                                        <div class="container">
-                    <input type="submit" name="save_point_settings" value="Save Settings"
-                                            class="ptn-submit"></div>
+                                                    <div class="container">
+                                <input type="submit" name="save_point_settings" value="Save Settings"
+                                                        class="ptn-submit"></div>
                                     
 
-                    <?php wp_nonce_field('save_point_settings', 'point_settings_nonce'); ?>
-                </form>
-            </div>
-            <?php
-            break;
+                                <?php wp_nonce_field('save_point_settings', 'point_settings_nonce'); ?>
+                            </form>
+                        </div>
+                        <?php
+                        break;
 
     }
     echo '</div>';
