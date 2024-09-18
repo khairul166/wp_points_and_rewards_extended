@@ -172,11 +172,11 @@ function points_rewards_submenu_callback() {
     $start_date = isset($_GET['start_date']) ? sanitize_text_field($_GET['start_date']) : '';
     $end_date = isset($_GET['end_date']) ? sanitize_text_field($_GET['end_date']) : '';
     $selected_sources = isset($_GET['point_sources']) ? array_map('sanitize_text_field', $_GET['point_sources']) : [];
-
+    
     // Base query to retrieve logs
     $query = "SELECT * FROM {$wpdb->prefix}point_log WHERE 1=1";
-
-    // Apply filters (same as used in the display logic)
+    
+    // Apply filters
     if (!empty($search_query)) {
         $query .= $wpdb->prepare(
             " AND user_id IN (
@@ -185,7 +185,7 @@ function points_rewards_submenu_callback() {
             '%' . $search_query . '%'
         );
     }
-
+    
     if (!empty($start_date) && !empty($end_date)) {
         $query .= $wpdb->prepare(
             " AND DATE(log_date) BETWEEN %s AND %s",
@@ -202,7 +202,7 @@ function points_rewards_submenu_callback() {
             $end_date
         );
     }
-
+    
     if (!empty($selected_sources)) {
         $placeholders = implode(', ', array_fill(0, count($selected_sources), '%s'));
         $query .= $wpdb->prepare(
@@ -211,40 +211,76 @@ function points_rewards_submenu_callback() {
         );
     }
     $query .= " ORDER BY `id` DESC";
-
+    
     // Fetch the filtered data
     $logs = $wpdb->get_results($query);
-
+    
     // Check if PDF export is requested
     if (isset($_POST['export_pdf'])) {
         // Start output buffering to prevent premature output
         ob_end_clean(); // Clean the previous buffer if any
-
+    
         // Include the FPDF library
         require_once get_template_directory() . '/reward-point/fpdf/fpdf.php';
-
+    
         // Check if logs are empty
         if (empty($logs)) {
             echo 'No data available for export.';
             exit;
         }
-
+        class PDF extends FPDF {
+            // Page footer (this function is called automatically for each page)
+            function Footer() {
+                // Go to 1.5 cm from bottom
+                $this->SetY(-15);
+                // Select Arial italic 8
+                $this->SetFont('Arial', 'I', 8);
+                // Page number (Place it on the right side of the bottom)
+                $this->Cell(0, 10, 'Page '.$this->PageNo().' of {nb}', 0, 0, 'R');
+            }
+        }
+        
         // Create a new PDF instance
-        $pdf = new FPDF();
+        $pdf = new PDF('L', 'mm', 'A4');
+        // Alias for total pages
+        $pdf->AliasNbPages();
         $pdf->AddPage();
-        $pdf->SetFont('Arial', 'B', 10);
-
+        $pdf->SetFont('Arial', 'B', 25);
+    
+        // Add Site Title
+        $site_title = get_bloginfo('name');
+        $site_tagline = get_bloginfo('description');
+        $pdf->Cell(275, 10, $site_title, 0, 1, 'C');
+        $pdf->SetFont('Arial', 'B', 12);
+        $pdf->Cell(275, 10, $site_tagline, 0, 1, 'C');
+        $pdf->Ln(3); // Add space after title
+    
+        // Add Point Log Date Range
+        $date_range_text = 'Point Log';
+        if (!empty($start_date) || !empty($end_date)) {
+            $date_range_text .= " (From $start_date To $end_date)";
+        }else{
+            $date_range_text.= "(All Time)";
+        }
+        $pdf->SetFont('Arial', 'B', 15);
+        $pdf->Cell(275, 10, $date_range_text, 0, 1, 'C');
+        $pdf->Ln(2); // Add space after title
+    
+        // Set font for table headers and set background color
+        $pdf->SetFont('Arial', 'B', 12);
+        $pdf->SetFillColor(207, 207, 207); // Set header background color to #cfcfcf
+    
         // Add table headers
-        $pdf->Cell(10, 10, 'SL', 1);
-        $pdf->Cell(30, 10, 'Username', 1);
-        $pdf->Cell(30, 10, 'Name', 1);
-        $pdf->Cell(30, 10, 'Role', 1);
-        $pdf->Cell(30, 10, 'Point Source', 1);
-        $pdf->Cell(30, 10, 'Date', 1);
-        $pdf->Cell(20, 10, 'Points', 1);
-        $pdf->Ln();
-
+        $pdf->Cell(15, 10, 'SL', 1, 0, 'C', true);
+        $pdf->Cell(40, 10, 'Username', 1, 0, 'C', true);
+        $pdf->Cell(40, 10, 'Name', 1, 0, 'C', true);
+        $pdf->Cell(35, 10, 'Role', 1, 0, 'C', true);
+        $pdf->Cell(65, 10, 'Point Source', 1, 0, 'C', true);
+        $pdf->Cell(50, 10, 'Date', 1, 0, 'C', true);
+        $pdf->Cell(30, 10, 'Points', 1, 1, 'C', true); // End the row
+    
         // Add data to the PDF
+        $pdf->SetFont('Arial', '', 12); // Reset font for table data
         $serial_number = 1;
         foreach ($logs as $log) {
             $user_info = get_userdata($log->user_id);
@@ -254,13 +290,13 @@ function points_rewards_submenu_callback() {
             $log_order_id = $log->order_id;
             $my_account_permalink = get_permalink(get_option('woocommerce_myaccount_page_id'));
             $view_order_url = $my_account_permalink . 'view-order/' . $log_order_id . '/';
-
+    
             if ($point_source === 'purchase') {
                 $point_source_text = 'Earned for Purchase #' . $log_order_id;
             } elseif ($point_source === 'admin_adjustment') {
-                $point_source_text = 'Point Adjusted by Easy';
+                $point_source_text = 'Point Adjusted by Admin';
                 if ($log_reason) {
-                    $point_source_text = 'for' . $log_reason;
+                    $point_source_text .= ' for ' . $log_reason;
                 }
             } elseif ($point_source === 'redeem') {
                 $point_source_text = 'Deducted for Redeeming #' . $log_order_id;
@@ -273,36 +309,36 @@ function points_rewards_submenu_callback() {
             } else {
                 $point_source_text = 'Unknown Source';
             }
-
+    
             // Ensure $user_info is valid
             if ($user_info) {
-                $pdf->Cell(10, 10, $serial_number++, 1);
-                $pdf->Cell(30, 10, $user_info->user_login, 1);
-                $pdf->Cell(30, 10, $user_info->display_name, 1);
-                $pdf->Cell(30, 10, implode(', ', $user_info->roles), 1);
-                $pdf->Cell(30, 10, $point_source_text, 1);
-                $pdf->Cell(30, 10, date('Y-m-d', strtotime($log->log_date)), 1);
-                $pdf->Cell(20, 10, $log->points, 1);
+                $pdf->Cell(15, 10, $serial_number++, 1, 0, 'C');
+                $pdf->Cell(40, 10, $user_info->user_login, 1, 0, 'C');
+                $pdf->Cell(40, 10, $user_info->display_name, 1, 0, 'C');
+                $pdf->Cell(35, 10, implode(', ', $user_info->roles), 1, 0, 'C');
+                $pdf->Cell(65, 10, $point_source_text, 1);
+                $pdf->Cell(50, 10, date('d-m-Y \a\t h:i A', strtotime($log->log_date)), 1, 0, 'C');
+                $pdf->Cell(30, 10, $log->points, 1, 0, 'C');
                 $pdf->Ln();
             }
         }
-
+    
         // Clean any buffer before sending PDF
         ob_clean();
-
+    
         // Set headers for PDF download
         header('Content-Type: application/pdf');
         header('Content-Disposition: attachment; filename="point_log_' . time() . '.pdf"');
         header('Cache-Control: must-revalidate');
         header('Pragma: public');
-
+    
         // Output the PDF
         $pdf->Output('D', 'point_log_' . time() . '.pdf');
-
+    
         // End the buffering and exit
         exit;
     }
-
+    
     // Proceed with rendering the HTML page if no export is requested
     if (isset($_GET['tab'])) {
         $active_tab = sanitize_text_field($_GET['tab']);
