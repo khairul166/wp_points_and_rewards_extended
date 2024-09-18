@@ -2,7 +2,10 @@
 
 require_once(get_template_directory() . '/reward-point/custom-point-adjustment.php');
 require_once(get_template_directory() . '/reward-point/enque.php');
-require_once(get_template_directory() . '/reward-point/excel/src/SimpleXLSXGen.php');
+
+require_once get_template_directory() . '/reward-point/simplexlsxgen/src/SimpleXLSXGen.php';
+                use Shuchkin\SimpleXLSXGen;
+
 
 
 
@@ -245,6 +248,31 @@ function points_rewards_submenu_callback() {
         $serial_number = 1;
         foreach ($logs as $log) {
             $user_info = get_userdata($log->user_id);
+            
+            $point_source = $log->point_source;
+            $log_reason = $log->reason;
+            $log_order_id = $log->order_id;
+            $my_account_permalink = get_permalink(get_option('woocommerce_myaccount_page_id'));
+            $view_order_url = $my_account_permalink . 'view-order/' . $log_order_id . '/';
+
+            if ($point_source === 'purchase') {
+                $point_source_text = 'Earned for Purchase #' . $log_order_id;
+            } elseif ($point_source === 'admin_adjustment') {
+                $point_source_text = 'Point Adjusted by Easy';
+                if ($log_reason) {
+                    $point_source_text = 'for' . $log_reason;
+                }
+            } elseif ($point_source === 'redeem') {
+                $point_source_text = 'Deducted for Redeeming #' . $log_order_id;
+            } elseif ($point_source === 'signup_bonus'){
+                $point_source_text= 'Signup Bonus';
+            } elseif ($point_source === 'signup_ref'){
+                $point_source_text= 'Referral Bonus';
+            } elseif ($point_source === 'ref_signup'){
+                $point_source_text= 'Signup Referral Bonus';
+            } else {
+                $point_source_text = 'Unknown Source';
+            }
 
             // Ensure $user_info is valid
             if ($user_info) {
@@ -252,7 +280,7 @@ function points_rewards_submenu_callback() {
                 $pdf->Cell(30, 10, $user_info->user_login, 1);
                 $pdf->Cell(30, 10, $user_info->display_name, 1);
                 $pdf->Cell(30, 10, implode(', ', $user_info->roles), 1);
-                $pdf->Cell(30, 10, $log->point_source, 1);
+                $pdf->Cell(30, 10, $point_source_text, 1);
                 $pdf->Cell(30, 10, date('Y-m-d', strtotime($log->log_date)), 1);
                 $pdf->Cell(20, 10, $log->points, 1);
                 $pdf->Ln();
@@ -416,59 +444,125 @@ function points_rewards_submenu_callback() {
 
 
 
+                
+                // Excel Export
+                if (isset($_POST['export_excel'])) {
+                
+                    // Check if the class is loaded correctly
+                    if (!class_exists('Shuchkin\SimpleXLSXGen')) {
+                        echo 'SimpleXLSXGen class not found. Please check the path to the SimpleXLSXGen.php file.<br/>';
+                        echo 'enqued path: '.__DIR__.'/simplexlsxgen/src/SimpleXLSXGen.php <br/>';
+                        echo 'file explorer path: C:\xampp\htdocs\wordpress\wp-content\themes\Storefornt\reward-point\simplexlsxgen\src\SimpleXLSXGen.php';
+                        exit;
+                    }
+                
+                    global $wpdb;
+                
+                    // Fetch data based on the current page filters (like the PDF export)
+                    $search_query = isset($_GET['search']) ? sanitize_text_field($_GET['search']) : '';
+                    $start_date = isset($_GET['start_date']) ? sanitize_text_field($_GET['start_date']) : '';
+                    $end_date = isset($_GET['end_date']) ? sanitize_text_field($_GET['end_date']) : '';
+                    $selected_sources = isset($_GET['point_sources']) ? array_map('sanitize_text_field', $_GET['point_sources']) : [];
+                
+                    // Base query to retrieve logs
+                    $query = "SELECT * FROM {$wpdb->prefix}point_log WHERE 1=1";
+                
+                    // Apply filters (same as used in the display logic)
+                    if (!empty($search_query)) {
+                        $query .= $wpdb->prepare(
+                            " AND user_id IN (
+                                SELECT ID FROM {$wpdb->users} WHERE user_login LIKE %s
+                            )",
+                            '%' . $search_query . '%'
+                        );
+                    }
+                
+                    if (!empty($start_date) && !empty($end_date)) {
+                        $query .= $wpdb->prepare(
+                            " AND DATE(log_date) BETWEEN %s AND %s",
+                            $start_date, $end_date
+                        );
+                    } elseif (!empty($start_date)) {
+                        $query .= $wpdb->prepare(
+                            " AND DATE(log_date) >= %s",
+                            $start_date
+                        );
+                    } elseif (!empty($end_date)) {
+                        $query .= $wpdb->prepare(
+                            " AND DATE(log_date) <= %s",
+                            $end_date
+                        );
+                    }
+                
+                    if (!empty($selected_sources)) {
+                        $placeholders = implode(', ', array_fill(0, count($selected_sources), '%s'));
+                        $query .= $wpdb->prepare(
+                            " AND point_source IN ($placeholders)",
+                            ...$selected_sources
+                        );
+                    }
+                    $query .= " ORDER BY `id` DESC";
+                    // Fetch the filtered data
+                    $logs = $wpdb->get_results($query);
+                
+                    // Check if data exists
+                    if (empty($logs)) {
+                        echo 'No data available for export.';
+                        return;
+                    }
+                
+                    // Prepare data for Excel
+                    $xlsxData = [['SL', 'Username', 'Name', 'Role', 'Point Source', 'Date', 'Points']];
+                    $serial_number = 1;
+                
+                    foreach ($logs as $log) {
+                        $user_info = get_userdata($log->user_id);
+                        
+                        $point_source = $log->point_source;
+                        $log_reason = $log->reason;
+                        $log_order_id = $log->order_id;
+                        $my_account_permalink = get_permalink(get_option('woocommerce_myaccount_page_id'));
+                        $view_order_url = $my_account_permalink . 'view-order/' . $log_order_id . '/';
 
-
-// Excel Export
-if (isset($_POST['export_excel'])) {
-    // Include SimpleXLSXGen library
-    require_once(get_template_directory() . '/reward-point/excel/src/SimpleXLSXGen.php');
-
-
-    global $wpdb;
-
-    // Fetch data
-    $logs = $wpdb->get_results("SELECT * FROM wp_point_log");
-
-    // Check if data exists
-    if (empty($logs)) {
-        echo 'No data available for export.';
-        return;
-    }
-
-    // Prepare data for Excel
-    $xlsxData = [['SL', 'Username', 'Name', 'Role', 'Point Source', 'Date', 'Points']];
-    $serial_number = 1;
-
-    foreach ($logs as $log) {
-        $user_info = get_userdata($log->user_id);
-
-        if ($user_info) {
-            $xlsxData[] = [
-                $serial_number++,
-                $user_info->user_login,
-                $user_info->display_name,
-                implode(', ', $user_info->roles),
-                $log->point_source,
-                date('Y-m-d', strtotime($log->log_date)),
-                $log->points
-            ];
-        }
-    }
-
-    // Generate Excel file
-    $xlsx = SimpleXLSXGen::fromArray($xlsxData);
-
-    // Download the Excel file
-    $xlsx->downloadAs('point_log_' . time() . '.xlsx');
-    exit;
-}
-
-// if (class_exists('SimpleXLSXGen')) {
-//     echo '<br/>Class found!';
-// } else {
-//     echo '<br/>Class not found!';
-// }
-
+                        if ($point_source === 'purchase') {
+                            $point_source_text = 'Earned for Purchase #' . $log_order_id;
+                        } elseif ($point_source === 'admin_adjustment') {
+                            $point_source_text = 'Point Adjusted by Easy';
+                            if ($log_reason) {
+                                $point_source_text = 'for' . $log_reason;
+                            }
+                        } elseif ($point_source === 'redeem') {
+                            $point_source_text = 'Deducted for Redeeming #' . $log_order_id;
+                        } elseif ($point_source === 'signup_bonus'){
+                            $point_source_text= 'Signup Bonus';
+                        } elseif ($point_source === 'signup_ref'){
+                            $point_source_text= 'Referral Bonus';
+                        } elseif ($point_source === 'ref_signup'){
+                            $point_source_text= 'Signup Referral Bonus';
+                        } else {
+                            $point_source_text = 'Unknown Source';
+                        }
+                
+                        if ($user_info) {
+                            $xlsxData[] = [
+                                $serial_number++,
+                                $user_info->user_login,
+                                $user_info->display_name,
+                                implode(', ', $user_info->roles),
+                                $point_source_text,
+                                date('Y-m-d', strtotime($log->log_date)),
+                                $log->points
+                            ];
+                        }
+                    }
+                
+                    // Generate Excel file
+                    $xlsx = SimpleXLSXGen::fromArray($xlsxData);
+                
+                    // Download the Excel file
+                    $xlsx->downloadAs('point_log_' . time() . '.xlsx');
+                    exit;
+                }
 
                                                
                 echo '<div class="form-container"><form method="get" action="" class="form1">';
