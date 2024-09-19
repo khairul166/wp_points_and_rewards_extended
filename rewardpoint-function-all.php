@@ -546,9 +546,23 @@ function points_rewards_submenu_callback() {
                         echo 'No data available for export.';
                         return;
                     }
-                
+                    // Prepare site details and date range
+                    $site_title = get_bloginfo('name');
+                    $site_description = get_bloginfo('description');
+                    $date_range_text = 'Point Log (All Time)';
+                    if (!empty($start_date) || !empty($end_date)) {
+                        $date_range_text = "Point Log (From $start_date To $end_date)";
+                    }
+
                     // Prepare data for Excel
-                    $xlsxData = [['SL', 'Username', 'Name', 'Role', 'Point Source', 'Date', 'Points']];
+                    $xlsxData = [];
+
+                    // Add site name and description
+                    $xlsxData[] = ['<style font-size="32"><middle><center><b>'.$site_title.'</b></center></middle></style>'];
+                    $xlsxData[] = ['<center>'.$site_description.'</center>'];
+                    $xlsxData[] = []; // Empty row to separate header
+                    $xlsxData[] = ['<style font-size="17"><middle><center><b>'.$date_range_text.'</b></center></middle></style>'];
+                    $xlsxData[] = ['<style border="thin"><center><b>SL</b></center></style>', '<style border="thin"><center><b>Username</b></center></style>', '<style border="thin"><center><b>Name</b></center></style>', '<style border="thin"><center><b>Role</b></center></style>', '<style border="thin"><center><b>Point Source</b></center></style>', '<style border="thin"><center><b>Date</b></center></style>', '<style border="thin"><center><b>Points</b></center></style>'];
                     $serial_number = 1;
                 
                     foreach ($logs as $log) {
@@ -581,19 +595,25 @@ function points_rewards_submenu_callback() {
                 
                         if ($user_info) {
                             $xlsxData[] = [
-                                $serial_number++,
-                                $user_info->user_login,
-                                $user_info->display_name,
-                                implode(', ', $user_info->roles),
-                                $point_source_text,
-                                date('Y-m-d', strtotime($log->log_date)),
-                                $log->points
+                                '<style border="thin"><center>'.$serial_number++.'</center></style>',
+                                '<style border="thin"><center>'.$user_info->user_login.'</center></style>',
+                                '<style border="thin"><center>'.$user_info->display_name.'</center></style>',
+                                '<style border="thin"><center>'.implode(', ', $user_info->roles).'</center></style>',
+                                '<style border="thin">'.$point_source_text.'</style>',
+                               '<style border="thin"><center>'.date('d-m-Y h:i A', strtotime($log->log_date)).'</center></style>',
+                                '<style border="thin">'.$log->points.'</style>'
                             ];
                         }
                     }
                 
                     // Generate Excel file
-                    $xlsx = SimpleXLSXGen::fromArray($xlsxData);
+                    $xlsx = SimpleXLSXGen::fromArray($xlsxData)
+                    ->mergeCells('A1:G1')
+                    ->mergeCells('A2:G2')
+                    ->mergeCells('A3:G3')
+                    ->mergeCells('A4:G4')
+                    ->setDefaultFontSize(12)
+                    ->setColWidth(1, 7);
                 
                     // Download the Excel file
                     $xlsx->downloadAs('point_log_' . time() . '.xlsx');
