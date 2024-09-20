@@ -351,6 +351,7 @@ function points_rewards_submenu_callback() {
     echo '<h2 class="nav-tab-wrapper">';
     echo '<a href="?page=points-rewards&tab=manage-points" class="nav-tab ' . (($active_tab === 'manage-points') ? 'nav-tab-active' : '') . '">Manage Points</a>';
     echo '<a href="?page=points-rewards&tab=point-log" class="nav-tab ' . (($active_tab === 'point-log') ? 'nav-tab-active' : '') . '">Point Log</a>';
+    echo '<a href="?page=points-rewards&tab=reports" class="nav-tab ' . (($active_tab === 'reports') ? 'nav-tab-active' : '') . '">Reports</a>';
     echo '<a href="?page=points-rewards&tab=point-settings" class="nav-tab ' . (($active_tab === 'point-settings') ? 'nav-tab-active' : '') . '">Point Settings</a>';
     echo '</h2>';
 
@@ -861,6 +862,28 @@ function points_rewards_submenu_callback() {
 
 
             //=======================================================
+            break;
+        case 'reports':
+            echo '<div class="wrap">';
+                echo '<h2>Reports</h2>';?>
+                <div class="reports-head">
+                    <div class="section-head">
+                        <div class="sales-summary">
+                            <div class="sales-summary-head">Total Sales</div>
+                            <div>50000</div>
+                        </div>
+                        <div class="discounted-order-summary">
+                            <div class="discounted-order-head">Total Discounted Sales</div>
+                            <div>100</div>
+                        </div>
+                        <div class="discounted-order-amt">
+                            <div class="discounted-order-amt-head">Total Discounted Amount</div>
+                            <div>5000</div>
+                        </div>
+                    </div>
+                </div>
+
+                <?php echo '</div>';
             break;
         case 'point-settings':
             // Add your code for Point Settings tab

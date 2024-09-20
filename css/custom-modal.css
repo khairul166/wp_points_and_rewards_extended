@@ -313,3 +313,24 @@
 form.form2 input {
     margin: 0 3px !important;
 }
+
+.section-head{
+    padding: 10px;
+    display:flex;
+    gap: 10px;
+}
+.sales-summary{
+    background-color: #00a32a;
+    color: #fff;
+    padding: 15px;
+}
+.discounted-order-summary{
+    background-color: #dd0000;
+    color: #fff;
+    padding: 15px;
+}
+.discounted-order-amt{
+    background-color: #a503b4;
+    color: #fff;
+    padding: 15px; 
+}
