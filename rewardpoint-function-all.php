@@ -165,6 +165,185 @@ add_action('admin_menu', 'add_points_rewards_submenu');
 
 // Callback function for the Points and Rewards sub-menu page
 function points_rewards_submenu_callback() {
+//Manage Points page Codes ================
+    if (isset($_POST['export_pdf_manage'])) {
+        ob_end_clean(); // Clean the previous buffer if any
+    
+        // Include FPDF library
+        require_once get_template_directory() . '/reward-point/fpdf/fpdf.php';
+    
+        // Fetch search filter data
+        $search_query = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
+    
+        // Base query to retrieve customer points
+        global $wpdb;
+        $query = "
+            SELECT u.ID, u.user_login, u.display_name, SUM(pl.points) as total_points
+            FROM {$wpdb->users} u
+            LEFT JOIN {$wpdb->prefix}point_log pl ON u.ID = pl.user_id
+            WHERE 1=1
+        ";
+    
+        // Apply search filter (if any)
+        if (!empty($search_query)) {
+            $query .= $wpdb->prepare(
+                " AND u.user_login LIKE %s OR u.display_name LIKE %s",
+                '%' . $search_query . '%', '%' . $search_query . '%'
+            );
+        }
+    
+        $query .= " GROUP BY u.ID ORDER BY u.ID";
+    
+        // Execute the query
+        $customers = $wpdb->get_results($query);
+    
+        if (empty($customers)) {
+            echo 'No data available for export.';
+            exit;
+        }
+    
+        // Define custom PDF class to add footer
+        class PDF extends FPDF {
+            // Page footer (this function is called automatically for each page)
+            function Footer() {
+                // Go to 1.5 cm from bottom
+                $this->SetY(-15);
+                // Select Arial italic 8
+                $this->SetFont('Arial', 'I', 8);
+                // Page number (Place it on the right side of the bottom)
+                $this->Cell(0, 10, 'Page '.$this->PageNo().' of {nb}', 0, 0, 'R');
+            }
+        }
+    
+        // Create a new PDF instance using the custom PDF class
+        $pdf = new PDF('P', 'mm', 'A4'); // Notice we're using the custom PDF class
+        $pdf->AliasNbPages(); // Call this method to set total number of pages
+        $pdf->AddPage();
+        $pdf->SetFont('Arial', 'B', 25);
+    
+        // Add Site Title and Date Range
+        $site_title = get_bloginfo('name');
+        $site_tagline = get_bloginfo('description');
+        $pdf->Cell(190, 10, $site_title, 0, 1, 'C');
+        $pdf->SetFont('Arial', 'B', 12);
+        $pdf->Cell(190, 10, $site_tagline, 0, 1, 'C');
+        $pdf->Ln(3); // Add space after title
+    
+        $pdf->SetFont('Arial', 'B', 15);
+        $pdf->Cell(190, 10, 'Customer Point List', 0, 1, 'C');
+        $pdf->Ln(2); // Add space after title
+        $pdf->SetFont('Arial', 'B', 12);
+    
+        // Add Table Headers
+        $pdf->SetFillColor(207, 207, 207); // Set header background color
+        $pdf->Cell(15, 10, 'SL', 1, 0, 'C', true);
+        $pdf->Cell(60, 10, 'Username', 1, 0, 'C', true);
+        $pdf->Cell(75, 10, 'Name', 1, 0, 'C', true);
+        $pdf->Cell(40, 10, 'Points', 1, 1, 'C', true); // End row
+        $pdf->SetFont('Arial', '', 12); // Reset font for table data
+    
+        // Add Customer Data
+        $serial_number = 1;
+        foreach ($customers as $customer) {
+            $customer_total_points = round($customer->total_points);
+            $pdf->Cell(15, 10, $serial_number++, 1, 0, 'C');
+            $pdf->Cell(60, 10, $customer->user_login, 1, 0, 'C');
+            $pdf->Cell(75, 10, $customer->display_name, 1, 0, 'C');
+            $pdf->Cell(40, 10, $customer_total_points, 1, 1, 'C'); // Total points from point_log
+        }
+    
+        // Clean any buffer before sending PDF
+        ob_clean();
+    
+        // Set headers for PDF download
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: attachment; filename="customer_points_' . time() . '.pdf"');
+        header('Cache-Control: must-revalidate');
+        header('Pragma: public');
+    
+        // Output the PDF
+        $pdf->Output('D', 'customer_points_' . time() . '.pdf');
+    
+        exit;
+    }
+    
+    
+    
+    
+    
+// Excel Export for Manage Points
+if (isset($_POST['export_excel_manage'])) {
+    // Include SimpleXLSXGen library
+    $search_query = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
+
+    global $wpdb;
+
+    $query = "
+            SELECT u.ID, u.user_login, u.display_name, SUM(pl.points) as total_points
+            FROM {$wpdb->users} u
+            LEFT JOIN {$wpdb->prefix}point_log pl ON u.ID = pl.user_id
+            WHERE 1=1
+        ";
+    
+        // Apply search filter (if any)
+        if (!empty($search_query)) {
+            $query .= $wpdb->prepare(
+                " AND u.user_login LIKE %s OR u.display_name LIKE %s",
+                '%' . $search_query . '%', '%' . $search_query . '%'
+            );
+        }
+    
+        $query .= " GROUP BY u.ID ORDER BY u.ID";
+    
+        // Execute the query
+        $customers = $wpdb->get_results($query);
+    
+        if (empty($customers)) {
+            echo 'No data available for export.';
+            exit;
+        }
+
+    // Prepare site details
+    $site_title = get_bloginfo('name');
+    $site_description = get_bloginfo('description');
+    $date_range_text = 'Customer Point List';
+
+    // Prepare data for Excel
+    $xlsxData = [];
+    $xlsxData[] = ['<style font-size="25"><middle><center><b>'.$site_title.'</b></center></middle></style>'];
+    $xlsxData[] = ['<center>'.$site_description.'</center>'];
+    $xlsxData[] = []; // Empty row to separate header
+    $xlsxData[] = ['<style font-size="17"><middle><center><b>'.$date_range_text.'</b></center></middle></style>'];
+    $xlsxData[] = ['<style border="thin"><center><b>SL</b></center></style>', '<style border="thin"><center><b>Username</b></center></style>', '<style border="thin"><center><b>Name</b></center></style>', '<style border="thin"><center><b>Points</b></center></style>'];
+
+    $serial_number = 1;
+    foreach ($customers as $customer) {
+        $xlsxData[] = [
+            '<style border="thin"><center>'.$serial_number++.'</center></style>',
+            '<style border="thin"><center>'.$customer->user_login.'</center></style>',
+            '<style border="thin"><center>'.$customer->display_name.'</center></style>',
+            '<style border="thin">'.round($customer->total_points ?: 0).'</style>'
+        ];
+    }
+
+    // Generate Excel file
+    $xlsx = SimpleXLSXGen::fromArray($xlsxData)
+    ->mergeCells('A1:D1')
+    ->mergeCells('A2:D2')
+    ->mergeCells('A3:D3')
+    ->mergeCells('A4:D4')
+    ->setDefaultFontSize(12)
+    ->setColWidth(1, 7)
+    ->setColWidth(2, 14)
+    ->setColWidth(3, 16);
+
+    // Download the Excel file
+    $xlsx->downloadAs('customer_points_' . time() . '.xlsx');
+    exit;
+}
+//Manage Points page Codes ================
+
+//=============Point log page export to pdf codes ==============
     global $wpdb;
 
     // Fetch filters from GET request
@@ -378,14 +557,19 @@ function points_rewards_submenu_callback() {
 
                         <div class="wrap">
                             <h2>Customer Point List</h2>
-                            <p class="search-box">
-                            <form method="get" action="" style="float: right; margin: 0;">
+                            <!-- <p class="search-box"> -->
+                            <div class="form-container" style="padding-bottom:0 !important;">
+                            <form method="get" action="" class="form1">
                                 <input type="hidden" name="page" value="points-rewards">
                                 <input type="hidden" name="tab" value="manage-points">
                                 <input type="text" name="s" value="<?php echo esc_attr($search_query); ?>" placeholder="Search User">
                                 <input type="submit" value="Search" class="button">
                             </form>
-                            </p>
+                           <form method="post" action="" class="form2">
+                                               <input type="submit" name="export_pdf_manage" class="button" value="Export to PDF">
+                                               <input type="submit" name="export_excel_manage" class="button" value="Export to Excel">
+                                               </form></div>
+                            <!-- </p> -->
                             <?php $user_list_table->display(); ?>
                         </div>
 
@@ -870,16 +1054,27 @@ function points_rewards_submenu_callback() {
                     <div class="section-head">
                         <div class="sales-summary">
                             <div class="sales-summary-head">Total Sales</div>
-                            <div>50000</div>
+                            <div class="values">50000</div>
                         </div>
                         <div class="discounted-order-summary">
                             <div class="discounted-order-head">Total Discounted Sales</div>
-                            <div>100</div>
+                            <div class="values">100</div>
                         </div>
                         <div class="discounted-order-amt">
                             <div class="discounted-order-amt-head">Total Discounted Amount</div>
-                            <div>5000</div>
+                            <div class="values">5000</div>
                         </div>
+                        <div class="filter-container">
+    <select id="date-filter" class="date-filter">
+      <option value="today">Left side Today</option>
+      <option value="this_week">This Week</option>
+      <option value="this_month">This Month</option>
+      <option value="this_year">This Year</option>
+      <option value="custom">Custom</option>
+    </select>
+    <div class="calendar-container">
+      <div id="calendar"></div>
+    </div>
                     </div>
                 </div>
 

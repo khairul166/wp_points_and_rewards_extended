@@ -14,6 +14,7 @@ function enqueue_custom_admin_style()
 
     // Enqueue the stylesheet.
     wp_enqueue_style('custom-admin-style', $css_url);
+    wp_enqueue_style('custom-calender-style', 'https://cdn.jsdelivr.net/npm/flatpickr');
 
 }
 add_action('admin_enqueue_scripts', 'enqueue_custom_admin_style');
