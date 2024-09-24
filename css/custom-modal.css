@@ -298,20 +298,31 @@
 
 .form-container {
     display: flex;
-    gap: 10px; /* Adjust spacing between forms */
+    justify-content: space-between;
     padding: 15px 0;
 }
 
 .form1 {
-    flex: 1 0 80%; /* 35% width */
+    flex: 2;
 }
 
 .form2 {
-    flex: 0 0 20%; /* 65% width */
+    text-align: right;
 }
 
 form.form2 input {
     margin: 0 3px !important;
+}
+
+/* Add a media query for mobile devices */
+@media only screen and (max-width: 768px) {
+    .form-container {
+        flex-direction: column; /* Stack forms on top of each other */
+    }
+    .form1, .form2 {
+        width: 100%; /* Make forms full-width */
+        text-align: center;
+    }
 }
 
 .section-head{
