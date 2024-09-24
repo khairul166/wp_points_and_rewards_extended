@@ -1047,38 +1047,454 @@ if (isset($_POST['export_excel_manage'])) {
 
             //=======================================================
             break;
-        case 'reports':
-            echo '<div class="wrap">';
-                echo '<h2>Reports</h2>';?>
-                <div class="reports-head">
-                    <div class="section-head">
-                        <div class="sales-summary">
-                            <div class="sales-summary-head">Total Sales</div>
-                            <div class="values">50000</div>
-                        </div>
-                        <div class="discounted-order-summary">
-                            <div class="discounted-order-head">Total Discounted Sales</div>
-                            <div class="values">100</div>
-                        </div>
-                        <div class="discounted-order-amt">
-                            <div class="discounted-order-amt-head">Total Discounted Amount</div>
-                            <div class="values">5000</div>
-                        </div>
-                        <div class="filter-container">
-    <select id="date-filter" class="date-filter">
-      <option value="today">Left side Today</option>
-      <option value="this_week">This Week</option>
-      <option value="this_month">This Month</option>
-      <option value="this_year">This Year</option>
-      <option value="custom">Custom</option>
-    </select>
-    <div class="calendar-container">
-      <div id="calendar"></div>
-    </div>
-                    </div>
-                </div>
+            case 'reports':
+                
+                echo '<div class="wrap"> <h2>Sales Reports</h2>'; ?>
+                
+                <form method="GET" action="">
+    <input type="hidden" name="page" value="points-rewards">
+    <input type="hidden" name="tab" value="reports">
+    <label for="start-date">Start Date:</label>
+    <input type="date" id="start-date" name="start-date" value="<?php echo isset($_GET['start-date']) ? esc_attr($_GET['start-date']) : ''; ?>" />
+    
+    <label for="end-date">End Date:</label>
+    <input type="date" id="end-date" name="end-date" value="<?php echo isset($_GET['end-date']) ? esc_attr($_GET['end-date']) : ''; ?>" />
+    
+    <button type="submit">Filter</button>
+</form>
 
-                <?php echo '</div>';
+<?php 
+global $wpdb;
+
+// Initialize the variables
+$total_sales = 0;
+$total_orders = 0;
+$new_customers = 0;
+$total_points_earned = 0;
+$total_points_applied = 0;
+
+// Get the current month's start and end dates
+$first_day_of_month = date('Y-m-01');
+$last_day_of_month = date('Y-m-d');
+
+// Check if dates are set; if not, use the current month's dates
+$start_date = isset($_GET['start-date']) && $_GET['start-date'] ? $_GET['start-date'] : $first_day_of_month;
+$end_date = isset($_GET['end-date']) && $_GET['end-date'] ? $_GET['end-date'] : $last_day_of_month;
+
+// Adjust time for full day range
+$start_date .= ' 00:00:00';
+$end_date .= ' 23:59:59';
+
+// Format the dates for display
+$start_date_display = date('d-m-Y', strtotime($start_date));
+$end_date_display = date('d-m-Y', strtotime($end_date));
+
+// Calculate the previous period (same number of days before the start date)
+$previous_start_date = date('Y-m-d H:i:s', strtotime($start_date . ' -1 month'));
+$previous_end_date = date('Y-m-d H:i:s', strtotime($end_date . ' -1 month'));
+
+// Get total sales for current and previous periods
+$total_sales = $wpdb->get_var(
+    $wpdb->prepare(
+        "SELECT SUM(meta_value) 
+        FROM {$wpdb->prefix}postmeta 
+        JOIN {$wpdb->prefix}posts ON {$wpdb->prefix}postmeta.post_id = {$wpdb->prefix}posts.ID 
+        WHERE {$wpdb->prefix}postmeta.meta_key = '_order_total' 
+        AND {$wpdb->prefix}posts.post_type = 'shop_order' 
+        AND {$wpdb->prefix}posts.post_date BETWEEN %s AND %s 
+        AND {$wpdb->prefix}posts.post_status IN ('wc-completed', 'wc-processing')", 
+        $start_date, 
+        $end_date
+    )
+);
+
+$previous_sales = $wpdb->get_var(
+    $wpdb->prepare(
+        "SELECT SUM(meta_value) 
+        FROM {$wpdb->prefix}postmeta 
+        JOIN {$wpdb->prefix}posts ON {$wpdb->prefix}postmeta.post_id = {$wpdb->prefix}posts.ID 
+        WHERE {$wpdb->prefix}postmeta.meta_key = '_order_total' 
+        AND {$wpdb->prefix}posts.post_type = 'shop_order' 
+        AND {$wpdb->prefix}posts.post_date BETWEEN %s AND %s 
+        AND {$wpdb->prefix}posts.post_status IN ('wc-completed', 'wc-processing')", 
+        $previous_start_date, 
+        $previous_end_date
+    )
+);
+
+// Get total orders count for current and previous periods
+$total_orders = $wpdb->get_var(
+    $wpdb->prepare(
+        "SELECT COUNT(*) 
+        FROM {$wpdb->prefix}posts 
+        WHERE post_type = 'shop_order' 
+        AND post_date BETWEEN %s AND %s 
+        AND post_status IN ('wc-completed')", 
+        $start_date, 
+        $end_date
+    )
+);
+
+$previous_orders = $wpdb->get_var(
+    $wpdb->prepare(
+        "SELECT COUNT(*) 
+        FROM {$wpdb->prefix}posts 
+        WHERE post_type = 'shop_order' 
+        AND post_date BETWEEN %s AND %s 
+        AND post_status IN ('wc-completed')", 
+        $previous_start_date, 
+        $previous_end_date
+    )
+);
+
+// Get new customer registrations for current and previous periods
+$new_customers = $wpdb->get_var(
+    $wpdb->prepare(
+        "SELECT COUNT(*) 
+        FROM {$wpdb->prefix}users 
+        WHERE user_registered BETWEEN %s AND %s", 
+        $start_date, 
+        $end_date
+    )
+);
+
+$previous_customers = $wpdb->get_var(
+    $wpdb->prepare(
+        "SELECT COUNT(*) 
+        FROM {$wpdb->prefix}users 
+        WHERE user_registered BETWEEN %s AND %s", 
+        $previous_start_date, 
+        $previous_end_date
+    )
+);
+
+// Get total points earned and applied for current and previous periods
+$total_points_earned = $wpdb->get_var(
+    $wpdb->prepare(
+        "SELECT SUM(points) 
+        FROM {$wpdb->prefix}point_log 
+        WHERE log_date BETWEEN %s AND %s 
+        AND points > 0", // Positive points indicate points earned
+        $start_date, 
+        $end_date
+    )
+);
+
+$total_points_applieds = $wpdb->get_var(
+    $wpdb->prepare(
+        "SELECT SUM(points) 
+        FROM {$wpdb->prefix}point_log 
+        WHERE log_date BETWEEN %s AND %s 
+        AND points < 0", // Negative points indicate points applied
+        $start_date, 
+        $end_date
+    )
+);
+
+// Previous points earned and applied
+$previous_points_earned = $wpdb->get_var(
+    $wpdb->prepare(
+        "SELECT SUM(points) 
+        FROM {$wpdb->prefix}point_log 
+        WHERE log_date BETWEEN %s AND %s 
+        AND points > 0", 
+        $previous_start_date, 
+        $previous_end_date
+    )
+);
+
+$previous_points_applied = $wpdb->get_var(
+    $wpdb->prepare(
+        "SELECT SUM(points) 
+        FROM {$wpdb->prefix}point_log 
+        WHERE log_date BETWEEN %s AND %s 
+        AND points < 0", 
+        $previous_start_date, 
+        $previous_end_date
+    )
+);
+
+if (!empty($total_points_applieds)) {
+    $total_points_applied = abs($total_points_applieds);
+} else {
+    $total_points_applied = 0; // or any default value you want to display
+}
+
+
+// Calculate percentage changes
+$sales_change = round($previous_sales > 0 ? (($total_sales - $previous_sales) / $previous_sales) * 100 : 0);
+$orders_change = round($previous_orders > 0 ? (($total_orders - $previous_orders) / $previous_orders) * 100 : 0);
+$customers_change = round($previous_customers > 0 ? (($new_customers - $previous_customers) / $previous_customers) * 100 : 0);
+
+// Points changes
+$points_earned_change = round($previous_points_earned > 0 ? (($total_points_earned - $previous_points_earned) / $previous_points_earned) * 100 : 0);
+$previous_points_applied = abs($previous_points_applied);
+$points_applied_change = round($previous_points_applied > 0 ? (($total_points_applied - $previous_points_applied) / $previous_points_applied) * 100 : 0);
+
+
+?>
+
+<div class="report-cards">
+    <!-- Total Sales Report Card -->
+    <div class="report-card" style="background-color: #e6f4f7;">
+        <div class="report-card-icon"><i class="fas fa-chart-line"></i></div>
+        <div class="report-card-content">
+            <h2><?php echo get_woocommerce_currency_symbol(); ?><?php echo number_format($total_sales, 2); ?></h2>
+            <p>Total Sales</p>
+            <small>From <?php echo esc_html($start_date_display); ?> to <?php echo esc_html($end_date_display); ?></small><br/>
+            <?php 
+            echo '<small style="color: green;">Previous Period: +'.esc_html($previous_sales).'</small><br/>';
+            if($sales_change >= 0){
+                echo '<small style="color: green;">Previous Period: +'.esc_html($sales_change).'% </small>';
+            } else {
+                echo '<small style="color: red;">Previous Period: '.esc_html($sales_change).'% </small>';
+            }
+            ?>
+        </div>
+    </div>
+    
+    <!-- Total Orders Report Card -->
+    <div class="report-card" style="background-color: #f8edfa;">
+        <div class="report-card-icon"><i class="fas fa-receipt"></i></div>
+        <div class="report-card-content">
+            <h2><?php echo esc_html($total_orders); ?></h2>
+            <p>Total Orders</p>
+            <small>From <?php echo esc_html($start_date_display); ?> to <?php echo esc_html($end_date_display); ?></small><br/>
+            <?php 
+            echo '<small style="color: green;">Previous Period: +'.esc_html($previous_orders).'</small><br/>';
+            if($orders_change >= 0){
+                echo '<small style="color: green;">Previous Period: +'.esc_html($orders_change).'% </small>';
+            } else {
+                echo '<small style="color: red;">Previous Period: '.esc_html($orders_change).'% </small>';
+            }
+            ?>
+        </div>
+    </div>
+
+    <!-- New Customers Report Card -->
+    <div class="report-card" style="background-color: #f4f9e6;">
+        <div class="report-card-icon"><i class="fas fa-users"></i></div>
+        <div class="report-card-content">
+            <h2><?php echo esc_html($new_customers); ?></h2>
+            <p>New Customers</p>
+            <small>From <?php echo esc_html($start_date_display); ?> to <?php echo esc_html($end_date_display); ?></small><br/>
+            <?php 
+            echo '<small style="color: green;">Previous Period: +'.esc_html($previous_customers).'</small><br/>';
+            if($customers_change >= 0){
+                echo '<small style="color: green;">Previous Period: +'.esc_html($customers_change).'% </small>';
+            } else {
+                echo '<small style="color: red;">Previous Period: '.esc_html($customers_change).'% </small>';
+            }
+            ?>
+        </div>
+    </div>
+
+    <!-- Points Earned Report Card -->
+    <div class="report-card" style="background-color: #e6f4f7;">
+        <div class="report-card-icon"><i class="fas fa-coins"></i></div>
+        <div class="report-card-content">
+            <h2><?php echo esc_html(round($total_points_earned)); ?></h2>
+            <p>Points Earned</p>
+            <small>From <?php echo esc_html($start_date_display); ?> to <?php echo esc_html($end_date_display); ?></small><br/>
+            <?php 
+            echo '<small style="color: green;">Previous Period: +'.esc_html($previous_points_earned).'</small><br/>';
+            if($points_earned_change >= 0){
+                echo '<small style="color: green;">Previous Period: +'.esc_html($points_earned_change).'% </small>';
+            } else {
+                echo '<small style="color: red;">Previous Period: '.esc_html($points_earned_change).'% </small>';
+            }
+            ?>
+        </div>
+    </div>
+
+    <!-- Points Applied Report Card -->
+    <div class="report-card" style="background-color: #f8edfa;">
+        <div class="report-card-icon"><i class="fas fa-coins"></i></div>
+        <div class="report-card-content">
+            <h2><?php echo abs(esc_html($total_points_applied)); ?></h2>
+            <p>Points Applied</p>
+            <small>From <?php echo esc_html($start_date_display); ?> to <?php echo esc_html($end_date_display); ?></small><br/>
+            <?php 
+            echo '<small style="color: green;">Previous Period: +'.esc_html($previous_points_applied).'</small><br/>';
+            if($points_applied_change >= 0){
+                echo '<small style="color: green;">Previous Period: +'.esc_html($points_applied_change).'% </small>';
+            } else {
+                echo '<small style="color: red;">Previous Period: '.esc_html($points_applied_change).'% </small>';
+            }
+            ?>
+        </div>
+    </div>
+</div>
+
+<!-- Chart containers -->
+<div class="charts">
+    <div class="salescomparison">
+        <div class="title">Total Sales Comparisons</div>
+        <canvas id="salesComparisonChart"></canvas>
+    </div>
+</div>
+
+<?php
+
+// Helper function to generate a range of dates between two given dates
+function get_date_range($start_date, $end_date, $format = 'd-m-Y') {
+    $interval = new DateInterval('P1D'); // 1 Day interval
+    $realEnd = new DateTime($end_date);
+
+    // Modify to avoid adding an extra day
+    $realEnd->setTime(23, 59, 59);
+
+    $date_range = new DatePeriod(new DateTime($start_date), $interval, $realEnd);
+
+    $dates = [];
+    foreach($date_range as $date) {
+        $dates[] = $date->format($format);
+    }
+    return $dates;
+}
+
+// Fetch current sales data for the selected date range
+$current_sales_data = $wpdb->get_results(
+    $wpdb->prepare(
+        "SELECT DATE(post_date) as sale_date, SUM(meta_value) as total_sales 
+        FROM {$wpdb->prefix}postmeta 
+        JOIN {$wpdb->prefix}posts ON {$wpdb->prefix}postmeta.post_id = {$wpdb->prefix}posts.ID 
+        WHERE {$wpdb->prefix}postmeta.meta_key = '_order_total' 
+        AND {$wpdb->prefix}posts.post_type = 'shop_order' 
+        AND {$wpdb->prefix}posts.post_date BETWEEN %s AND %s 
+        AND {$wpdb->prefix}posts.post_status IN ('wc-completed', 'wc-processing') 
+        GROUP BY sale_date",
+        $start_date,
+        $end_date
+    )
+);
+
+
+// Generate the list of dates for the current period
+$current_all_dates = get_date_range($start_date, $end_date, 'Y-m-d');
+
+// Create a mapping of current period's dates to sales data (fill 0 for missing dates)
+$current_sales_by_date = [];
+foreach ($current_all_dates as $date) {
+    $current_sales_by_date[$date] = 0; // Default to 0
+}
+foreach ($current_sales_data as $data) {
+    $current_sales_by_date[$data->sale_date] = $data->total_sales; // Override with actual sales
+}
+
+// Prepare current sales data for Chart.js
+$current_sales_dates = [];
+$current_sales_totals = [];
+foreach ($current_sales_by_date as $date => $total_sales) {
+    $current_sales_dates[] = date('d-m-Y', strtotime($date)); // Format date as d-m-Y
+    $current_sales_totals[] = $total_sales;
+}
+
+// Convert arrays to JSON for Chart.js
+$current_sales_dates_js = json_encode($current_sales_dates);
+$current_sales_totals_js = json_encode($current_sales_totals);
+
+// Calculate the previous period based on the current period's start and end dates
+$previous_start_date = date('Y-m-d', strtotime('-1 month', strtotime($start_date)));
+$previous_end_date = date('Y-m-d', strtotime('-1 month', strtotime($end_date)));
+
+// Fetch previous sales data for the previous period
+$previous_sales_data = $wpdb->get_results(
+    $wpdb->prepare(
+        "SELECT DATE(post_date) as sale_date, SUM(meta_value) as total_sales 
+        FROM {$wpdb->prefix}postmeta 
+        JOIN {$wpdb->prefix}posts ON {$wpdb->prefix}postmeta.post_id = {$wpdb->prefix}posts.ID 
+        WHERE {$wpdb->prefix}postmeta.meta_key = '_order_total' 
+        AND {$wpdb->prefix}posts.post_type = 'shop_order' 
+        AND {$wpdb->prefix}posts.post_date BETWEEN %s AND %s 
+        AND {$wpdb->prefix}posts.post_status IN ('wc-completed', 'wc-processing') 
+        GROUP BY sale_date",
+        $previous_start_date,
+        $previous_end_date
+    )
+);
+
+// Generate the list of dates for the previous period
+$previous_all_dates = get_date_range($previous_start_date, $previous_end_date, 'Y-m-d');
+
+// Create a mapping of previous period's dates to sales data (fill 0 for missing dates)
+$previous_sales_by_date = [];
+foreach ($previous_all_dates as $date) {
+    $previous_sales_by_date[$date] = 0; // Default to 0
+}
+foreach ($previous_sales_data as $data) {
+    $previous_sales_by_date[$data->sale_date] = $data->total_sales; // Override with actual sales
+}
+
+// Prepare previous sales data for Chart.js
+$previous_sales_dates = [];
+$previous_sales_totals = [];
+foreach ($previous_sales_by_date as $date => $total_sales) {
+    $previous_sales_dates[] = date('d-m-Y', strtotime($date)); // Format date as d-m-Y
+    $previous_sales_totals[] = $total_sales;
+}
+
+// Convert arrays to JSON for Chart.js
+$previous_sales_dates_js = json_encode($previous_sales_dates);
+$previous_sales_totals_js = json_encode($previous_sales_totals);
+
+?>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('salesComparisonChart').getContext('2d');
+
+    // Current and previous period data
+    const salesDates = <?php echo $current_sales_dates_js; ?>;
+    const currentSalesTotals = <?php echo $current_sales_totals_js; ?>;
+    const previousSalesTotals = <?php echo $previous_sales_totals_js; ?>;
+
+    const salesComparisonChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: salesDates, // X-axis with aligned dates for both periods
+            datasets: [{
+                label: 'Total Sales(Current Period)',
+                data: currentSalesTotals, // Current period sales
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1
+            },
+            {
+                label: 'Total Sales(Previous Period)',
+                data: previousSalesTotals, // Previous period sales
+                backgroundColor: 'rgba(255, 159, 64, 0.2)',
+                borderColor: 'rgba(255, 159, 64, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true // Ensure Y-axis starts at 0
+                },
+                x: {
+                    ticks: {
+                        autoSkip: false // Ensure all dates are displayed
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
+
+
+
+
+
+
+
+
+
+
+
+    <?php
+    //============ Point-setting page starts ============
             break;
         case 'point-settings':
             // Add your code for Point Settings tab

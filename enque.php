@@ -14,7 +14,12 @@ function enqueue_custom_admin_style()
 
     // Enqueue the stylesheet.
     wp_enqueue_style('custom-admin-style', $css_url);
-    wp_enqueue_style('custom-calender-style', 'https://cdn.jsdelivr.net/npm/flatpickr');
+     // Enqueue Chart.js from a CDN.
+     // Enqueue Chart.js and luxon
+wp_enqueue_script('chartjs', 'https://cdn.jsdelivr.net/npm/chart.js', [], null, true);
+wp_enqueue_script('luxon', 'https://cdn.jsdelivr.net/npm/luxon@3.0.1/build/global/luxon.min.js', [], null, true);
+wp_enqueue_script('chartjs-adapter-luxon', 'https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon', [], null, true);
+
 
 }
 add_action('admin_enqueue_scripts', 'enqueue_custom_admin_style');
