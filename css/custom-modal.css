@@ -422,7 +422,7 @@ canvas#salesComparisonChart,  canvas#pointsComparisonChart, canvas#appliedPoints
     padding: 15px;
 }
 .charts{
-    margin: 25px 0;
+    margin: 0;
 }
 
 .report-head {

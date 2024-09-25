@@ -1331,12 +1331,13 @@ $points_applied_change = round($previous_points_applied > 0 ? (($total_points_ap
 <div class="form-container">
     <div class="form1"></div>
     <form class="form2">
-        <label>Select Charts Type: </label>
-        <select class="chart-type" name="chart-type" id="chartTypeSelector">
-            <option value="line" selected>Line</option> <!-- Default to line chart -->
-            <option value="bar">Bar</option>
-        </select>
-    </form>
+    <label>Select Charts Type: </label>
+    <select class="chart-type" name="chart-type" id="chartTypeSelector">
+        <option value="line" selected>Line</option> <!-- Default to line chart -->
+        <option value="bar">Bar</option>
+        <option value="radar">Radar</option>
+    </select>
+</form>
 </div>
 
 <div class="charts">
@@ -1615,9 +1616,8 @@ $previous_applied_points_totals_js = json_encode($previous_applied_points_totals
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Get the chart type selector
     const chartTypeSelector = document.getElementById('chartTypeSelector');
-    
+
     // Function to create or update a chart with dynamic type
     function createChart(ctx, type, labels, currentData, previousData, currentLabel, previousLabel, backgroundColorCurrent, backgroundColorPrevious) {
         return new Chart(ctx, {
@@ -1629,14 +1629,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     data: currentData, // Current period data
                     backgroundColor: backgroundColorCurrent,
                     borderColor: backgroundColorCurrent,
-                    borderWidth: 1
+                    borderWidth: 3
                 },
                 {
                     label: previousLabel,
                     data: previousData, // Previous period data
                     backgroundColor: backgroundColorPrevious,
                     borderColor: backgroundColorPrevious,
-                    borderWidth: 1
+                    borderWidth: 3
                 }]
             },
             options: {
@@ -1646,7 +1646,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     },
                     x: {
                         ticks: {
-                            autoSkip: false // Ensure all dates are displayed
+                            autoSkip: false // Ensure all dates are displayed (for line and bar)
                         }
                     }
                 }
