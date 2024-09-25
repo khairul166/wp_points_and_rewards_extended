@@ -407,8 +407,9 @@ form.form2 input {
     margin: 5px 0;
     color: #888;
 }
-.salescomparison{
+.salescomparison, .pointcomparison, .appliedpointcomparison{
     box-shadow: 0 0px 2px rgba(0, 0, 0, 0.3);
+    margin-bottom: 22px;
 }
 .title {
     background-color: #e3e3e3;
@@ -417,6 +418,9 @@ form.form2 input {
     font-size: 14px;
     font-weight: 700;
 }
-canvas#salesComparisonChart{
+canvas#salesComparisonChart,  canvas#pointsComparisonChart, canvas#appliedPointsComparisonChart{
     padding: 15px;
+}
+.charts{
+    margin: 25px 0;
 }

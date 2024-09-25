@@ -1060,7 +1060,7 @@ if (isset($_POST['export_excel_manage'])) {
     <label for="end-date">End Date:</label>
     <input type="date" id="end-date" name="end-date" value="<?php echo isset($_GET['end-date']) ? esc_attr($_GET['end-date']) : ''; ?>" />
     
-    <button type="submit">Filter</button>
+    <button type="submit" class="button">Filter</button>
 </form>
 
 <?php 
@@ -1237,7 +1237,7 @@ $points_applied_change = round($previous_points_applied > 0 ? (($total_points_ap
 <div class="report-cards">
     <!-- Total Sales Report Card -->
     <div class="report-card" style="background-color: #e6f4f7;">
-        <div class="report-card-icon"><i class="fas fa-chart-line"></i></div>
+        <div class="report-card-icon"><span class="dashicons dashicons-screenoptions"></span></div>
         <div class="report-card-content">
             <h2><?php echo get_woocommerce_currency_symbol(); ?><?php echo number_format($total_sales, 2); ?></h2>
             <p>Total Sales</p>
@@ -1255,7 +1255,7 @@ $points_applied_change = round($previous_points_applied > 0 ? (($total_points_ap
     
     <!-- Total Orders Report Card -->
     <div class="report-card" style="background-color: #f8edfa;">
-        <div class="report-card-icon"><i class="fas fa-receipt"></i></div>
+        <div class="report-card-icon"><span class="dashicons dashicons-cart"></span></div>
         <div class="report-card-content">
             <h2><?php echo esc_html($total_orders); ?></h2>
             <p>Total Orders</p>
@@ -1273,7 +1273,7 @@ $points_applied_change = round($previous_points_applied > 0 ? (($total_points_ap
 
     <!-- New Customers Report Card -->
     <div class="report-card" style="background-color: #f4f9e6;">
-        <div class="report-card-icon"><i class="fas fa-users"></i></div>
+        <div class="report-card-icon"><span class="dashicons dashicons-admin-users"></span></div>
         <div class="report-card-content">
             <h2><?php echo esc_html($new_customers); ?></h2>
             <p>New Customers</p>
@@ -1291,7 +1291,7 @@ $points_applied_change = round($previous_points_applied > 0 ? (($total_points_ap
 
     <!-- Points Earned Report Card -->
     <div class="report-card" style="background-color: #e6f4f7;">
-        <div class="report-card-icon"><i class="fas fa-coins"></i></div>
+        <div class="report-card-icon"><span class="dashicons dashicons-database-add"></span></div>
         <div class="report-card-content">
             <h2><?php echo esc_html(round($total_points_earned)); ?></h2>
             <p>Points Earned</p>
@@ -1309,7 +1309,7 @@ $points_applied_change = round($previous_points_applied > 0 ? (($total_points_ap
 
     <!-- Points Applied Report Card -->
     <div class="report-card" style="background-color: #f8edfa;">
-        <div class="report-card-icon"><i class="fas fa-coins"></i></div>
+        <div class="report-card-icon"><span class="dashicons dashicons-database-remove"></span></div>
         <div class="report-card-content">
             <h2><?php echo abs(esc_html($total_points_applied)); ?></h2>
             <p>Points Applied</p>
@@ -1331,6 +1331,14 @@ $points_applied_change = round($previous_points_applied > 0 ? (($total_points_ap
     <div class="salescomparison">
         <div class="title">Total Sales Comparisons</div>
         <canvas id="salesComparisonChart"></canvas>
+    </div>
+    <div class="pointcomparison">
+        <div class="title">Total Point Comparisons</div>
+        <canvas id="pointsComparisonChart"></canvas>
+    </div>
+    <div class="appliedpointcomparison">
+        <div class="title">Total Applied Point Comparisons</div>
+        <canvas id="appliedPointsComparisonChart"></canvas>
     </div>
 </div>
 
@@ -1438,18 +1446,172 @@ foreach ($previous_sales_by_date as $date => $total_sales) {
 $previous_sales_dates_js = json_encode($previous_sales_dates);
 $previous_sales_totals_js = json_encode($previous_sales_totals);
 
+
+
+
+//==== code for point earn charts
+
+
+// Reuse the existing get_date_range function and period calculations
+// $current_all_dates = get_date_range($start_date, $end_date, 'Y-m-d');
+// $previous_start_date and $previous_end_date are already calculated
+
+// Fetch current points earned data for the selected date range
+$current_points_earned_data = $wpdb->get_results(
+    $wpdb->prepare(
+        "SELECT DATE(log_date) as point_date, SUM(points) as total_points_earned 
+        FROM {$wpdb->prefix}point_log 
+        WHERE points > 0
+        AND log_date BETWEEN %s AND %s
+        GROUP BY point_date",
+        $start_date,
+        $end_date
+    )
+);
+
+// Create a mapping of current period's dates to points earned data (fill 0 for missing dates)
+$current_points_by_date = [];
+foreach ($current_all_dates as $date) {
+    $current_points_by_date[$date] = 0; // Default to 0
+}
+foreach ($current_points_earned_data as $data) {
+    $current_points_by_date[$data->point_date] = $data->total_points_earned; // Override with actual points earned
+}
+
+// Prepare current points earned data for Chart.js
+$current_points_dates = [];
+$current_points_totals = [];
+foreach ($current_points_by_date as $date => $total_points) {
+    $current_points_dates[] = date('d-m-Y', strtotime($date)); // Format date as d-m-Y
+    $current_points_totals[] = $total_points;
+}
+
+// Convert arrays to JSON for Chart.js
+$current_points_dates_js = json_encode($current_points_dates);
+$current_points_totals_js = json_encode($current_points_totals);
+
+// Fetch previous points earned data for the previous period
+$previous_points_earned_data = $wpdb->get_results(
+    $wpdb->prepare(
+        "SELECT DATE(log_date) as point_date, SUM(points) as total_points_earned 
+        FROM {$wpdb->prefix}point_log 
+        WHERE points > 0
+        AND log_date BETWEEN %s AND %s
+        GROUP BY point_date",
+        $previous_start_date,
+        $previous_end_date
+    )
+);
+
+// Create a mapping of previous period's dates to points earned data (fill 0 for missing dates)
+$previous_points_by_date = [];
+foreach ($previous_all_dates as $date) {
+    $previous_points_by_date[$date] = 0; // Default to 0
+}
+foreach ($previous_points_earned_data as $data) {
+    $previous_points_by_date[$data->point_date] = $data->total_points_earned; // Override with actual points earned
+}
+
+// Prepare previous points earned data for Chart.js
+$previous_points_dates = [];
+$previous_points_totals = [];
+foreach ($previous_points_by_date as $date => $total_points) {
+    $previous_points_dates[] = date('d-m-Y', strtotime($date)); // Format date as d-m-Y
+    $previous_points_totals[] = $total_points;
+}
+
+// Convert arrays to JSON for Chart.js
+$previous_points_dates_js = json_encode($previous_points_dates);
+$previous_points_totals_js = json_encode($previous_points_totals);
+
+
+
+//==== Applied Points Charts
+
+// Reuse the existing get_date_range function and period calculations
+
+// Fetch current points applied (negative points) data for the selected date range
+$current_points_applied_data = $wpdb->get_results(
+    $wpdb->prepare(
+        "SELECT DATE(log_date) as point_date, SUM(points) as total_points_applied 
+        FROM {$wpdb->prefix}point_log 
+        WHERE points < 0
+        AND log_date BETWEEN %s AND %s
+        GROUP BY point_date",
+        $start_date,
+        $end_date
+    )
+);
+
+// Create a mapping of current period's dates to points applied data (fill 0 for missing dates)
+$current_applied_points_by_date = [];
+foreach ($current_all_dates as $date) {
+    $current_applied_points_by_date[$date] = 0; // Default to 0
+}
+foreach ($current_points_applied_data as $data) {
+    $current_applied_points_by_date[$data->point_date] = abs($data->total_points_applied); // Convert to positive value
+}
+
+// Prepare current points applied data for Chart.js
+$current_applied_points_dates = [];
+$current_applied_points_totals = [];
+foreach ($current_applied_points_by_date as $date => $total_points) {
+    $current_applied_points_dates[] = date('d-m-Y', strtotime($date)); // Format date as d-m-Y
+    $current_applied_points_totals[] = $total_points;
+}
+
+// Convert arrays to JSON for Chart.js
+$current_applied_points_dates_js = json_encode($current_applied_points_dates);
+$current_applied_points_totals_js = json_encode($current_applied_points_totals);
+
+
+// Fetch previous points applied data for the previous period
+$previous_points_applied_data = $wpdb->get_results(
+    $wpdb->prepare(
+        "SELECT DATE(log_date) as point_date, SUM(points) as total_points_applied 
+        FROM {$wpdb->prefix}point_log 
+        WHERE points < 0
+        AND log_date BETWEEN %s AND %s
+        GROUP BY point_date",
+        $previous_start_date,
+        $previous_end_date
+    )
+);
+
+// Create a mapping of previous period's dates to points applied data (fill 0 for missing dates)
+$previous_applied_points_by_date = [];
+foreach ($previous_all_dates as $date) {
+    $previous_applied_points_by_date[$date] = 0; // Default to 0
+}
+foreach ($previous_points_applied_data as $data) {
+    $previous_applied_points_by_date[$data->point_date] = abs($data->total_points_applied); // Convert to positive value
+}
+
+// Prepare previous points applied data for Chart.js
+$previous_applied_points_dates = [];
+$previous_applied_points_totals = [];
+foreach ($previous_applied_points_by_date as $date => $total_points) {
+    $previous_applied_points_dates[] = date('d-m-Y', strtotime($date)); // Format date as d-m-Y
+    $previous_applied_points_totals[] = $total_points;
+}
+
+// Convert arrays to JSON for Chart.js
+$previous_applied_points_dates_js = json_encode($previous_applied_points_dates);
+$previous_applied_points_totals_js = json_encode($previous_applied_points_totals);
+
 ?>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const ctx = document.getElementById('salesComparisonChart').getContext('2d');
+    const totalSalesCtx = document.getElementById('salesComparisonChart').getContext('2d');
 
     // Current and previous period data
     const salesDates = <?php echo $current_sales_dates_js; ?>;
     const currentSalesTotals = <?php echo $current_sales_totals_js; ?>;
     const previousSalesTotals = <?php echo $previous_sales_totals_js; ?>;
 
-    const salesComparisonChart = new Chart(ctx, {
-        type: 'line',
+    const salesComparisonChart = new Chart(totalSalesCtx, {
+        type: 'bar',
         data: {
             labels: salesDates, // X-axis with aligned dates for both periods
             datasets: [{
@@ -1464,6 +1626,88 @@ document.addEventListener('DOMContentLoaded', function() {
                 data: previousSalesTotals, // Previous period sales
                 backgroundColor: 'rgba(255, 159, 64, 0.2)',
                 borderColor: 'rgba(255, 159, 64, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true // Ensure Y-axis starts at 0
+                },
+                x: {
+                    ticks: {
+                        autoSkip: false // Ensure all dates are displayed
+                    }
+                }
+            }
+        }
+    });
+
+
+    const totalPointsEarnedCtx = document.getElementById('pointsComparisonChart').getContext('2d');
+
+    // Points earned data for both periods
+    const pointsDates = <?php echo $current_points_dates_js; ?>;
+    const currentPointsTotals = <?php echo $current_points_totals_js; ?>;
+    const previousPointsTotals = <?php echo $previous_points_totals_js; ?>;
+
+    const pointsComparisonChart = new Chart(totalPointsEarnedCtx, {
+        type: 'bar',
+        data: {
+            labels: pointsDates, // X-axis with aligned dates for both periods
+            datasets: [{
+                label: 'Points Earned(Current Period)',
+                data: currentPointsTotals, // Current period points earned
+                backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                borderColor: 'rgba(153, 102, 255, 1)',
+                borderWidth: 1
+            },
+            {
+                label: 'Points Earned(Previous Period)',
+                data: previousPointsTotals, // Previous period points earned
+                backgroundColor: 'rgba(255, 159, 64, 0.2)',
+                borderColor: 'rgba(255, 159, 64, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true // Ensure Y-axis starts at 0
+                },
+                x: {
+                    ticks: {
+                        autoSkip: false // Ensure all dates are displayed
+                    }
+                }
+            }
+        }
+    });
+
+
+    const totalPointsAppliedCtx = document.getElementById('appliedPointsComparisonChart').getContext('2d');
+
+    // Points applied data for both periods
+    const appliedPointsDates = <?php echo $current_applied_points_dates_js; ?>;
+    const currentAppliedPointsTotals = <?php echo $current_applied_points_totals_js; ?>;
+    const previousAppliedPointsTotals = <?php echo $previous_applied_points_totals_js; ?>;
+
+    const appliedPointsComparisonChart = new Chart(totalPointsAppliedCtx, {
+        type: 'bar',
+        data: {
+            labels: appliedPointsDates, // X-axis with aligned dates for both periods
+            datasets: [{
+                label: 'Points Applied(Current Period)',
+                data: currentAppliedPointsTotals, // Current period points applied
+                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                borderColor: 'rgba(255, 99, 132, 1)',
+                borderWidth: 1
+            },
+            {
+                label: 'Points Applied(Previous Period)',
+                data: previousAppliedPointsTotals, // Previous period points applied
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                borderColor: 'rgba(54, 162, 235, 1)',
                 borderWidth: 1
             }]
         },
