@@ -1049,9 +1049,9 @@ if (isset($_POST['export_excel_manage'])) {
             break;
             case 'reports':
                 
-                echo '<div class="wrap"> <h2>Sales Reports</h2>'; ?>
+                echo '<div class="wrap"><div class="form-container"> <div class="form1 report-head">Reports</div>'; ?>
                 
-                <form method="GET" action="">
+                <form method="GET" action="" class="form2">
     <input type="hidden" name="page" value="points-rewards">
     <input type="hidden" name="tab" value="reports">
     <label for="start-date">Start Date:</label>
@@ -1062,6 +1062,7 @@ if (isset($_POST['export_excel_manage'])) {
     
     <button type="submit" class="button">Filter</button>
 </form>
+            </div>
 
 <?php 
 global $wpdb;
@@ -1327,6 +1328,17 @@ $points_applied_change = round($previous_points_applied > 0 ? (($total_points_ap
 </div>
 
 <!-- Chart containers -->
+<div class="form-container">
+    <div class="form1"></div>
+    <form class="form2">
+        <label>Select Charts Type: </label>
+        <select class="chart-type" name="chart-type" id="chartTypeSelector">
+            <option value="line" selected>Line</option> <!-- Default to line chart -->
+            <option value="bar">Bar</option>
+        </select>
+    </form>
+</div>
+
 <div class="charts">
     <div class="salescomparison">
         <div class="title">Total Sales Comparisons</div>
@@ -1603,129 +1615,84 @@ $previous_applied_points_totals_js = json_encode($previous_applied_points_totals
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const totalSalesCtx = document.getElementById('salesComparisonChart').getContext('2d');
-
-    // Current and previous period data
-    const salesDates = <?php echo $current_sales_dates_js; ?>;
-    const currentSalesTotals = <?php echo $current_sales_totals_js; ?>;
-    const previousSalesTotals = <?php echo $previous_sales_totals_js; ?>;
-
-    const salesComparisonChart = new Chart(totalSalesCtx, {
-        type: 'bar',
-        data: {
-            labels: salesDates, // X-axis with aligned dates for both periods
-            datasets: [{
-                label: 'Total Sales(Current Period)',
-                data: currentSalesTotals, // Current period sales
-                backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                borderColor: 'rgba(75, 192, 192, 1)',
-                borderWidth: 1
-            },
-            {
-                label: 'Total Sales(Previous Period)',
-                data: previousSalesTotals, // Previous period sales
-                backgroundColor: 'rgba(255, 159, 64, 0.2)',
-                borderColor: 'rgba(255, 159, 64, 1)',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            scales: {
-                y: {
-                    beginAtZero: true // Ensure Y-axis starts at 0
+    // Get the chart type selector
+    const chartTypeSelector = document.getElementById('chartTypeSelector');
+    
+    // Function to create or update a chart with dynamic type
+    function createChart(ctx, type, labels, currentData, previousData, currentLabel, previousLabel, backgroundColorCurrent, backgroundColorPrevious) {
+        return new Chart(ctx, {
+            type: type,
+            data: {
+                labels: labels, // X-axis with aligned dates for both periods
+                datasets: [{
+                    label: currentLabel,
+                    data: currentData, // Current period data
+                    backgroundColor: backgroundColorCurrent,
+                    borderColor: backgroundColorCurrent,
+                    borderWidth: 1
                 },
-                x: {
-                    ticks: {
-                        autoSkip: false // Ensure all dates are displayed
+                {
+                    label: previousLabel,
+                    data: previousData, // Previous period data
+                    backgroundColor: backgroundColorPrevious,
+                    borderColor: backgroundColorPrevious,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true // Ensure Y-axis starts at 0
+                    },
+                    x: {
+                        ticks: {
+                            autoSkip: false // Ensure all dates are displayed
+                        }
                     }
                 }
             }
-        }
-    });
+        });
+    }
 
-
-    const totalPointsEarnedCtx = document.getElementById('pointsComparisonChart').getContext('2d');
+    // Current and previous sales data
+    const salesDates = <?php echo $current_sales_dates_js; ?>;
+    const currentSalesTotals = <?php echo $current_sales_totals_js; ?>;
+    const previousSalesTotals = <?php echo $previous_sales_totals_js; ?>;
 
     // Points earned data for both periods
     const pointsDates = <?php echo $current_points_dates_js; ?>;
     const currentPointsTotals = <?php echo $current_points_totals_js; ?>;
     const previousPointsTotals = <?php echo $previous_points_totals_js; ?>;
 
-    const pointsComparisonChart = new Chart(totalPointsEarnedCtx, {
-        type: 'bar',
-        data: {
-            labels: pointsDates, // X-axis with aligned dates for both periods
-            datasets: [{
-                label: 'Points Earned(Current Period)',
-                data: currentPointsTotals, // Current period points earned
-                backgroundColor: 'rgba(153, 102, 255, 0.2)',
-                borderColor: 'rgba(153, 102, 255, 1)',
-                borderWidth: 1
-            },
-            {
-                label: 'Points Earned(Previous Period)',
-                data: previousPointsTotals, // Previous period points earned
-                backgroundColor: 'rgba(255, 159, 64, 0.2)',
-                borderColor: 'rgba(255, 159, 64, 1)',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            scales: {
-                y: {
-                    beginAtZero: true // Ensure Y-axis starts at 0
-                },
-                x: {
-                    ticks: {
-                        autoSkip: false // Ensure all dates are displayed
-                    }
-                }
-            }
-        }
-    });
-
-
-    const totalPointsAppliedCtx = document.getElementById('appliedPointsComparisonChart').getContext('2d');
-
     // Points applied data for both periods
     const appliedPointsDates = <?php echo $current_applied_points_dates_js; ?>;
     const currentAppliedPointsTotals = <?php echo $current_applied_points_totals_js; ?>;
     const previousAppliedPointsTotals = <?php echo $previous_applied_points_totals_js; ?>;
 
-    const appliedPointsComparisonChart = new Chart(totalPointsAppliedCtx, {
-        type: 'bar',
-        data: {
-            labels: appliedPointsDates, // X-axis with aligned dates for both periods
-            datasets: [{
-                label: 'Points Applied(Current Period)',
-                data: currentAppliedPointsTotals, // Current period points applied
-                backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                borderColor: 'rgba(255, 99, 132, 1)',
-                borderWidth: 1
-            },
-            {
-                label: 'Points Applied(Previous Period)',
-                data: previousAppliedPointsTotals, // Previous period points applied
-                backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                borderColor: 'rgba(54, 162, 235, 1)',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            scales: {
-                y: {
-                    beginAtZero: true // Ensure Y-axis starts at 0
-                },
-                x: {
-                    ticks: {
-                        autoSkip: false // Ensure all dates are displayed
-                    }
-                }
-            }
-        }
+    // Initialize all charts with default 'line' type
+    let salesComparisonChart = createChart(document.getElementById('salesComparisonChart').getContext('2d'), 'line', salesDates, currentSalesTotals, previousSalesTotals, 'Total Sales (Current Period)', 'Total Sales (Previous Period)', 'rgba(75, 192, 192, 1)', 'rgba(255, 159, 64, 1)');
+    let pointsComparisonChart = createChart(document.getElementById('pointsComparisonChart').getContext('2d'), 'line', pointsDates, currentPointsTotals, previousPointsTotals, 'Points Earned (Current Period)', 'Points Earned (Previous Period)', 'rgba(153, 102, 255, 1)', 'rgba(255, 159, 64, 1)');
+    let appliedPointsComparisonChart = createChart(document.getElementById('appliedPointsComparisonChart').getContext('2d'), 'line', appliedPointsDates, currentAppliedPointsTotals, previousAppliedPointsTotals, 'Points Applied (Current Period)', 'Points Applied (Previous Period)', 'rgba(255, 99, 132, 1)', 'rgba(54, 162, 235, 1)');
+
+    // Event listener to switch chart types dynamically
+    chartTypeSelector.addEventListener('change', function() {
+        const selectedChartType = chartTypeSelector.value; // Get the selected chart type
+
+        // Destroy existing charts
+        salesComparisonChart.destroy();
+        pointsComparisonChart.destroy();
+        appliedPointsComparisonChart.destroy();
+
+        // Re-create charts with the new type
+        salesComparisonChart = createChart(document.getElementById('salesComparisonChart').getContext('2d'), selectedChartType, salesDates, currentSalesTotals, previousSalesTotals, 'Total Sales (Current Period)', 'Total Sales (Previous Period)', 'rgba(75, 192, 192, 1)', 'rgba(255, 159, 64, 1)');
+        pointsComparisonChart = createChart(document.getElementById('pointsComparisonChart').getContext('2d'), selectedChartType, pointsDates, currentPointsTotals, previousPointsTotals, 'Points Earned (Current Period)', 'Points Earned (Previous Period)', 'rgba(153, 102, 255, 1)', 'rgba(255, 159, 64, 1)');
+        appliedPointsComparisonChart = createChart(document.getElementById('appliedPointsComparisonChart').getContext('2d'), selectedChartType, appliedPointsDates, currentAppliedPointsTotals, previousAppliedPointsTotals, 'Points Applied (Current Period)', 'Points Applied (Previous Period)', 'rgba(255, 99, 132, 1)', 'rgba(54, 162, 235, 1)');
     });
 });
 </script>
+
+
+
 
 
 

@@ -424,3 +424,10 @@ canvas#salesComparisonChart,  canvas#pointsComparisonChart, canvas#appliedPoints
 .charts{
     margin: 25px 0;
 }
+
+.report-head {
+    font-size: 23px;
+    font-weight: 400;
+    margin: 0;
+    align-content: center;
+}
