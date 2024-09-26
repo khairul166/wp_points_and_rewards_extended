@@ -1244,11 +1244,10 @@ $points_applied_change = round($previous_points_applied > 0 ? (($total_points_ap
             <p>Total Sales</p>
             <small>From <?php echo esc_html($start_date_display); ?> to <?php echo esc_html($end_date_display); ?></small><br/>
             <?php 
-            echo '<small style="color: green;">Previous Period: +'.esc_html($previous_sales).'</small><br/>';
             if($sales_change >= 0){
-                echo '<small style="color: green;">Previous Period: +'.esc_html($sales_change).'% </small>';
+                echo '<small class="card-badge-green">Previous Period: +'.esc_html($previous_sales).' ('.esc_html($sales_change).'%) </small>';
             } else {
-                echo '<small style="color: red;">Previous Period: '.esc_html($sales_change).'% </small>';
+                echo '<small class="card-badge-red">Previous Period: '.esc_html($previous_sales).' ('.esc_html($sales_change).'%) </small>';
             }
             ?>
         </div>
@@ -1262,11 +1261,10 @@ $points_applied_change = round($previous_points_applied > 0 ? (($total_points_ap
             <p>Total Orders</p>
             <small>From <?php echo esc_html($start_date_display); ?> to <?php echo esc_html($end_date_display); ?></small><br/>
             <?php 
-            echo '<small style="color: green;">Previous Period: +'.esc_html($previous_orders).'</small><br/>';
             if($orders_change >= 0){
-                echo '<small style="color: green;">Previous Period: +'.esc_html($orders_change).'% </small>';
+                echo '<small class="card-badge-green">Previous Period: +'.esc_html($previous_orders).' ('.esc_html($orders_change).'%) </small>';
             } else {
-                echo '<small style="color: red;">Previous Period: '.esc_html($orders_change).'% </small>';
+                echo '<small class="card-badge-red">Previous Period: '.esc_html($previous_orders).' ('.esc_html($orders_change).'%) </small>';
             }
             ?>
         </div>
@@ -1280,11 +1278,10 @@ $points_applied_change = round($previous_points_applied > 0 ? (($total_points_ap
             <p>New Customers</p>
             <small>From <?php echo esc_html($start_date_display); ?> to <?php echo esc_html($end_date_display); ?></small><br/>
             <?php 
-            echo '<small style="color: green;">Previous Period: +'.esc_html($previous_customers).'</small><br/>';
             if($customers_change >= 0){
-                echo '<small style="color: green;">Previous Period: +'.esc_html($customers_change).'% </small>';
+                echo '<small class="card-badge-green">Previous Period: +'.esc_html($previous_customers).' ('.esc_html($customers_change).'%) </small>';
             } else {
-                echo '<small style="color: red;">Previous Period: '.esc_html($customers_change).'% </small>';
+                echo '<small class="card-badge-red">Previous Period: '.esc_html($previous_customers).' ('.esc_html($customers_change).'%) </small>';
             }
             ?>
         </div>
@@ -1298,11 +1295,10 @@ $points_applied_change = round($previous_points_applied > 0 ? (($total_points_ap
             <p>Points Earned</p>
             <small>From <?php echo esc_html($start_date_display); ?> to <?php echo esc_html($end_date_display); ?></small><br/>
             <?php 
-            echo '<small style="color: green;">Previous Period: +'.esc_html($previous_points_earned).'</small><br/>';
             if($points_earned_change >= 0){
-                echo '<small style="color: green;">Previous Period: +'.esc_html($points_earned_change).'% </small>';
+                echo '<small class="card-badge-green">Previous Period: +'.esc_html($previous_points_earned).' ('.esc_html($points_earned_change).'%) </small>';
             } else {
-                echo '<small style="color: red;">Previous Period: '.esc_html($points_earned_change).'% </small>';
+                echo '<small class="card-badge-red">Previous Period: '.esc_html($previous_points_earned).' ('.esc_html($points_earned_change).'%) </small>';
             }
             ?>
         </div>
@@ -1316,11 +1312,10 @@ $points_applied_change = round($previous_points_applied > 0 ? (($total_points_ap
             <p>Points Applied</p>
             <small>From <?php echo esc_html($start_date_display); ?> to <?php echo esc_html($end_date_display); ?></small><br/>
             <?php 
-            echo '<small style="color: green;">Previous Period: +'.esc_html($previous_points_applied).'</small><br/>';
             if($points_applied_change >= 0){
-                echo '<small style="color: green;">Previous Period: +'.esc_html($points_applied_change).'% </small>';
+                echo '<small class="card-badge-green">Previous Period: +'.esc_html($previous_points_applied).' ('.esc_html($points_applied_change).'%) </small>';
             } else {
-                echo '<small style="color: red;">Previous Period: '.esc_html($points_applied_change).'% </small>';
+                echo '<small class="card-badge-red">Previous Period: '.esc_html($previous_points_applied).' ('.esc_html($points_applied_change).'%) </small>';
             }
             ?>
         </div>
@@ -1329,7 +1324,7 @@ $points_applied_change = round($previous_points_applied > 0 ? (($total_points_ap
 
 <!-- Chart containers -->
 <div class="form-container">
-    <div class="form1"></div>
+    <div class="form1 charts-section"><span class="dashicons dashicons-chart-bar"></span> Charts</div>
     <form class="form2">
     <label>Select Charts Type: </label>
     <select class="chart-type" name="chart-type" id="chartTypeSelector">
@@ -1342,15 +1337,15 @@ $points_applied_change = round($previous_points_applied > 0 ? (($total_points_ap
 
 <div class="charts">
     <div class="salescomparison">
-        <div class="title">Total Sales Comparisons</div>
+        <div class="title"><span class="dashicons dashicons-screenoptions"></span> Total Sales Comparison</div>
         <canvas id="salesComparisonChart"></canvas>
     </div>
     <div class="pointcomparison">
-        <div class="title">Total Point Comparisons</div>
+        <div class="title"><span class="dashicons dashicons-database-add"></span> Total Earned Point Comparison</div>
         <canvas id="pointsComparisonChart"></canvas>
     </div>
     <div class="appliedpointcomparison">
-        <div class="title">Total Applied Point Comparisons</div>
+        <div class="title"><span class="dashicons dashicons-database-remove"></span> Total Applied Point Comparison</div>
         <canvas id="appliedPointsComparisonChart"></canvas>
     </div>
 </div>
@@ -1414,6 +1409,7 @@ foreach ($current_sales_by_date as $date => $total_sales) {
 // Convert arrays to JSON for Chart.js
 $current_sales_dates_js = json_encode($current_sales_dates);
 $current_sales_totals_js = json_encode($current_sales_totals);
+$total_current_sales_js= json_encode(html_entity_decode(get_woocommerce_currency_symbol(), ENT_COMPAT, 'UTF-8').array_sum($current_sales_totals));
 
 // Calculate the previous period based on the current period's start and end dates
 $previous_start_date = date('Y-m-d', strtotime('-1 month', strtotime($start_date)));
@@ -1458,9 +1454,7 @@ foreach ($previous_sales_by_date as $date => $total_sales) {
 // Convert arrays to JSON for Chart.js
 $previous_sales_dates_js = json_encode($previous_sales_dates);
 $previous_sales_totals_js = json_encode($previous_sales_totals);
-
-
-
+$total_previous_sales_js = json_encode(html_entity_decode(get_woocommerce_currency_symbol(), ENT_COMPAT, 'UTF-8').array_sum($previous_sales_totals));
 
 //==== code for point earn charts
 
@@ -1502,6 +1496,7 @@ foreach ($current_points_by_date as $date => $total_points) {
 // Convert arrays to JSON for Chart.js
 $current_points_dates_js = json_encode($current_points_dates);
 $current_points_totals_js = json_encode($current_points_totals);
+$current_points_totals_sum_js = json_encode(array_sum($current_points_totals));
 
 // Fetch previous points earned data for the previous period
 $previous_points_earned_data = $wpdb->get_results(
@@ -1536,6 +1531,7 @@ foreach ($previous_points_by_date as $date => $total_points) {
 // Convert arrays to JSON for Chart.js
 $previous_points_dates_js = json_encode($previous_points_dates);
 $previous_points_totals_js = json_encode($previous_points_totals);
+$previous_points_totals_sum_js = json_encode(array_sum($previous_points_totals));
 
 
 
@@ -1576,6 +1572,7 @@ foreach ($current_applied_points_by_date as $date => $total_points) {
 // Convert arrays to JSON for Chart.js
 $current_applied_points_dates_js = json_encode($current_applied_points_dates);
 $current_applied_points_totals_js = json_encode($current_applied_points_totals);
+$current_applied_points_totals_sum_js = json_encode(array_sum($current_applied_points_totals));
 
 
 // Fetch previous points applied data for the previous period
@@ -1611,8 +1608,11 @@ foreach ($previous_applied_points_by_date as $date => $total_points) {
 // Convert arrays to JSON for Chart.js
 $previous_applied_points_dates_js = json_encode($previous_applied_points_dates);
 $previous_applied_points_totals_js = json_encode($previous_applied_points_totals);
+$previous_applied_points_totals_sum_js = json_encode(array_sum($previous_applied_points_totals));
 
 ?>
+
+
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -1657,22 +1657,28 @@ document.addEventListener('DOMContentLoaded', function() {
     // Current and previous sales data
     const salesDates = <?php echo $current_sales_dates_js; ?>;
     const currentSalesTotals = <?php echo $current_sales_totals_js; ?>;
+    const currentSalesTotalssum = <?php echo $total_current_sales_js; ?>;
     const previousSalesTotals = <?php echo $previous_sales_totals_js; ?>;
+    const previousSalesTotalssum = <?php echo $total_previous_sales_js; ?>;
 
     // Points earned data for both periods
     const pointsDates = <?php echo $current_points_dates_js; ?>;
     const currentPointsTotals = <?php echo $current_points_totals_js; ?>;
+    const currentPointsTotalssum = <?php echo $current_points_totals_sum_js; ?>;
     const previousPointsTotals = <?php echo $previous_points_totals_js; ?>;
+    const previousPointsTotalssum = <?php echo $previous_points_totals_sum_js; ?>;
 
     // Points applied data for both periods
     const appliedPointsDates = <?php echo $current_applied_points_dates_js; ?>;
     const currentAppliedPointsTotals = <?php echo $current_applied_points_totals_js; ?>;
+    const currentAppliedPointsTotalssum = <?php echo $current_applied_points_totals_sum_js; ?>;
     const previousAppliedPointsTotals = <?php echo $previous_applied_points_totals_js; ?>;
+    const previousAppliedPointsTotalssum = <?php echo $previous_applied_points_totals_sum_js; ?>;
 
     // Initialize all charts with default 'line' type
-    let salesComparisonChart = createChart(document.getElementById('salesComparisonChart').getContext('2d'), 'line', salesDates, currentSalesTotals, previousSalesTotals, 'Total Sales (Current Period)', 'Total Sales (Previous Period)', 'rgba(75, 192, 192, 1)', 'rgba(255, 159, 64, 1)');
-    let pointsComparisonChart = createChart(document.getElementById('pointsComparisonChart').getContext('2d'), 'line', pointsDates, currentPointsTotals, previousPointsTotals, 'Points Earned (Current Period)', 'Points Earned (Previous Period)', 'rgba(153, 102, 255, 1)', 'rgba(255, 159, 64, 1)');
-    let appliedPointsComparisonChart = createChart(document.getElementById('appliedPointsComparisonChart').getContext('2d'), 'line', appliedPointsDates, currentAppliedPointsTotals, previousAppliedPointsTotals, 'Points Applied (Current Period)', 'Points Applied (Previous Period)', 'rgba(255, 99, 132, 1)', 'rgba(54, 162, 235, 1)');
+    let salesComparisonChart = createChart(document.getElementById('salesComparisonChart').getContext('2d'), 'line', salesDates, currentSalesTotals, previousSalesTotals, 'Current Period (' + currentSalesTotalssum +')', 'Previous Period (' + previousSalesTotalssum + ')', 'rgba(75, 192, 192, 1)', 'rgba(255, 159, 64, 1)');
+    let pointsComparisonChart = createChart(document.getElementById('pointsComparisonChart').getContext('2d'), 'line', pointsDates, currentPointsTotals, previousPointsTotals, 'Current Period (' + currentPointsTotalssum + ' Points)', 'Previous Period (' + previousPointsTotalssum +' Points)', 'rgba(153, 102, 255, 1)', 'rgba(255, 159, 64, 1)');
+    let appliedPointsComparisonChart = createChart(document.getElementById('appliedPointsComparisonChart').getContext('2d'), 'line', appliedPointsDates, currentAppliedPointsTotals, previousAppliedPointsTotals, 'Current Period (' + currentAppliedPointsTotalssum + ' Points)', 'Previous Period (' + previousAppliedPointsTotalssum + ' Points)', 'rgba(255, 99, 132, 1)', 'rgba(54, 162, 235, 1)');
 
     // Event listener to switch chart types dynamically
     chartTypeSelector.addEventListener('change', function() {
@@ -1684,9 +1690,9 @@ document.addEventListener('DOMContentLoaded', function() {
         appliedPointsComparisonChart.destroy();
 
         // Re-create charts with the new type
-        salesComparisonChart = createChart(document.getElementById('salesComparisonChart').getContext('2d'), selectedChartType, salesDates, currentSalesTotals, previousSalesTotals, 'Total Sales (Current Period)', 'Total Sales (Previous Period)', 'rgba(75, 192, 192, 1)', 'rgba(255, 159, 64, 1)');
-        pointsComparisonChart = createChart(document.getElementById('pointsComparisonChart').getContext('2d'), selectedChartType, pointsDates, currentPointsTotals, previousPointsTotals, 'Points Earned (Current Period)', 'Points Earned (Previous Period)', 'rgba(153, 102, 255, 1)', 'rgba(255, 159, 64, 1)');
-        appliedPointsComparisonChart = createChart(document.getElementById('appliedPointsComparisonChart').getContext('2d'), selectedChartType, appliedPointsDates, currentAppliedPointsTotals, previousAppliedPointsTotals, 'Points Applied (Current Period)', 'Points Applied (Previous Period)', 'rgba(255, 99, 132, 1)', 'rgba(54, 162, 235, 1)');
+        salesComparisonChart = createChart(document.getElementById('salesComparisonChart').getContext('2d'), selectedChartType, salesDates, currentSalesTotals, previousSalesTotals, 'Current Period (' + currentSalesTotalssum +')', 'Previous Period (' + previousSalesTotalssum + ')', 'rgba(75, 192, 192, 1)', 'rgba(255, 159, 64, 1)');
+        pointsComparisonChart = createChart(document.getElementById('pointsComparisonChart').getContext('2d'), selectedChartType, pointsDates, currentPointsTotals, previousPointsTotals, 'Current Period (' + currentPointsTotalssum + ' Points)', 'Previous Period (' + previousPointsTotalssum +' Points)', 'rgba(153, 102, 255, 1)', 'rgba(255, 159, 64, 1)');
+        appliedPointsComparisonChart = createChart(document.getElementById('appliedPointsComparisonChart').getContext('2d'), selectedChartType, appliedPointsDates, currentAppliedPointsTotals, previousAppliedPointsTotals, 'Current Period (' + currentAppliedPointsTotalssum + ' Points)', 'Previous Period (' + previousAppliedPointsTotalssum + ' Points)', 'rgba(255, 99, 132, 1)', 'rgba(54, 162, 235, 1)');
     });
 });
 </script>

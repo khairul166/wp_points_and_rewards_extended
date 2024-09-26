@@ -407,6 +407,12 @@ form.form2 input {
     margin: 5px 0;
     color: #888;
 }
+
+@media only screen and (max-width: 480px) {
+    .report-card {
+        width: 100%;
+    }
+  }
 .salescomparison, .pointcomparison, .appliedpointcomparison{
     box-shadow: 0 0px 2px rgba(0, 0, 0, 0.3);
     margin-bottom: 22px;
@@ -430,4 +436,26 @@ canvas#salesComparisonChart,  canvas#pointsComparisonChart, canvas#appliedPoints
     font-weight: 400;
     margin: 0;
     align-content: center;
+}
+
+.charts-section {
+    font-size: 20px;
+    font-weight: 700;
+    align-items: center;
+}
+
+.card-badge-green {
+    background-color: rgb(1, 146, 1);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 13px;
+    margin: 6px 0;
+}
+
+.card-badge-red {
+    background-color: rgb(177, 5, 5);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 13px;
+    margin: 6px 0;
 }
