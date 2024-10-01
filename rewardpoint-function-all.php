@@ -1122,7 +1122,6 @@ $previous_sales = $wpdb->get_var(
         $previous_end_date
     )
 );
-
 // Get total orders count for current and previous periods
 $total_orders = $wpdb->get_var(
     $wpdb->prepare(
@@ -1296,9 +1295,9 @@ $points_applied_change = round($previous_points_applied > 0 ? (($total_points_ap
             <small>From <?php echo esc_html($start_date_display); ?> to <?php echo esc_html($end_date_display); ?></small><br/>
             <?php 
             if($points_earned_change >= 0){
-                echo '<small class="card-badge-green">Previous Period: +'.esc_html($previous_points_earned).' ('.esc_html($points_earned_change).'%) </small>';
+                echo '<small class="card-badge-green">Previous Period: +'.esc_html(round($previous_points_earned)).' ('.esc_html($points_earned_change).'%) </small>';
             } else {
-                echo '<small class="card-badge-red">Previous Period: '.esc_html($previous_points_earned).' ('.esc_html($points_earned_change).'%) </small>';
+                echo '<small class="card-badge-red">Previous Period: '.esc_html(round($previous_points_earned)).' ('.esc_html($points_earned_change).'%) </small>';
             }
             ?>
         </div>
@@ -1430,7 +1429,6 @@ $previous_sales_data = $wpdb->get_results(
         $previous_end_date
     )
 );
-
 // Generate the list of dates for the previous period
 $previous_all_dates = get_date_range($previous_start_date, $previous_end_date, 'Y-m-d');
 
@@ -3396,6 +3394,17 @@ function apply_referral_bonus_points($user_id) {
 if($ref_system){
 add_action('user_register', 'apply_referral_bonus_points');
 }
+
+// Add text before the registration form
+function add_signup_points_message() {
+    $signup_points_box = get_option('signup_points_box', 0);
+
+    echo '<p class="notice notice-info">You will earn '. $signup_points_box.' points on successful signup!</p>';
+}
+if($signup_point){
+    add_action('register_form', 'add_signup_points_message');
+}
+
 
 function customize_coupon_message() {
     // Modify the coupon message to include "Have Points?"
