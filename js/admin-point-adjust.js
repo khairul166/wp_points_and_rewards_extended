@@ -101,4 +101,26 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 
+<script>
+    jQuery(document).ready(function($) {
+        var refPurchaseType = $('#ref_purchase_type').val();
+        if (refPurchaseType == 'fixed') {
+            $('#fixed_point_amount').parent().parent().show();
+            $('#percent_point_amount').parent().parent().hide();
+        } else {
+            $('#fixed_point_amount').parent().parent().hide();
+            $('#percent_point_amount').parent().parent().show();
+        }
 
+        $('#ref_purchase_type').change(function() {
+            var refPurchaseType = $(this).val();
+            if (refPurchaseType == 'fixed') {
+                $('#fixed_point_amount').parent().parent().show();
+                $('#percent_point_amount').parent().parent().hide();
+            } else {
+                $('#fixed_point_amount').parent().parent().hide();
+                $('#percent_point_amount').parent().parent().show();
+            }
+        });
+    });
+</script>

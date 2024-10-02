@@ -1725,11 +1725,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 $signup_point = isset($_POST['signup_point']) ? 1 : 0; // Ensure it's stored as a boolean
                 $admin_point_adjust = isset($_POST['admin_point_adjust']) ? 1 : 0; // Ensure it's stored as a boolean
                 $ref_system = isset($_POST['ref_system']) ? 1 : 0; // Ensure it's stored as a boolean
+                $ref_purchase = isset($_POST['ref_purchase']) ? 1 : 0; // Ensure it's stored as a boolean
                 $signup_points_box = isset($_POST['signup_points_box']) ? sanitize_text_field($_POST['signup_points_box']) : '';
                 $ref_user_points_box = isset($_POST['ref_user_points_box']) ? sanitize_text_field($_POST['ref_user_points_box']) : '';
                 $referrer_points_box = isset($_POST['referrer_points_box']) ? sanitize_text_field($_POST['referrer_points_box']) : '';
+                $min_ref = isset($_POST['min_ref']) ? sanitize_text_field($_POST['min_ref']) : '';
                 $point_massage = isset($_POST['point_massage']) ? 1 : 0; // Ensure it's stored as a boolean
                 // Save the point and reward status, conversation rates, and point redemption to the database or perform any other necessary actions
+                $ref_purchase_type = isset($_POST['ref_purchase_type']) ? sanitize_text_field($_POST['ref_purchase_type']) : 'Fixed';
+
+                $referrer_points_box = isset($_POST['referrer_points_box']) ? sanitize_text_field($_POST['referrer_points_box']) : '';
+
+                $fixed_point_amount = isset($_POST['fixed_point_amount']) ? sanitize_text_field($_POST['fixed_point_amount']) : '';
+
+                $percent_point_amount = isset($_POST['percent_point_amount']) ? sanitize_text_field($_POST['percent_point_amount']) : '';
+
+                
                 update_option('point_and_reward', $point_and_reward);
                 update_option('point_conversation_rate_point', $point_conversation_rate_point);
                 update_option('point_conversation_rate_taka', $point_conversation_rate_taka);
@@ -1741,12 +1752,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 update_option('admin_point_adjust', $admin_point_adjust);
                 update_option('signup_points_box', $signup_points_box);
                 update_option('ref_system', $ref_system);
+                update_option('ref_purchase', $ref_purchase);
                 update_option('ref_user_points_box', $ref_user_points_box);
                 update_option('referrer_points_box', $referrer_points_box);
+                update_option('min_ref', $min_ref);
                 update_option('point_massage', $point_massage);
+                update_option('ref_purchase_type', $ref_purchase_type);
+                update_option('fixed_point_amount', $fixed_point_amount);
+                update_option('percent_point_amount', $percent_point_amount);
 
                 //echo '<div class="notice notice-success"><p><strong>Point settings saved.</strong></p></div>';
-                echo '<div class="success-notice"><p><strong>Point settings saved.</strong></p></div>';
+                echo '<div class="notice notice-success settings-error is-dismissible"><p><strong>Point settings saved.</strong></p></div>';
 
             }
             // Get the current point and reward status, conversation rates, and point redemption from the database
@@ -1761,9 +1777,13 @@ document.addEventListener('DOMContentLoaded', function() {
             $admin_point_adjust = get_option('admin_point_adjust', 0);
             $signup_points_box = get_option('signup_points_box', 0);
             $ref_system = get_option('ref_system', 0);
+            $ref_purchase = get_option('ref_purchase', 0);
             $ref_user_points_box = get_option('ref_user_points_box', 0);
             $referrer_points_box = get_option('referrer_points_box', 0);
+            $min_ref = get_option('min_ref', 1);
             $point_massage = get_option('point_massage', 0);
+            $percent_point_amount = get_option('percent_point_amount', 0);
+            $ref_purchase_type = get_option('ref_purchase_type', 'Fixed');
             ?>
 
                         <div id="point-settings" class="wrap">
@@ -1792,10 +1812,10 @@ document.addEventListener('DOMContentLoaded', function() {
                                             <div class="right-width-div"><input type="number" id="point_conversation_rate_point"
                                                     name="point_conversation_rate_point" placeholder="Point"
                                                     value="<?php echo esc_attr($point_conversation_rate_point); ?>" class="pts-input" required>
-                                                <label for="point_conversation_rate_taka"> Point(s) on every </label>
+                                                <label for="point_conversation_rate_taka"> Point(s) on every <?php echo get_woocommerce_currency_symbol() ?> </label>
                                                 <input type="number" id="point_conversation_rate_taka" name="point_conversation_rate_taka" placeholder="Taka"
                                                     value="<?php echo esc_attr($point_conversation_rate_taka); ?>" class="pts-input" required>
-                                                <label for="point_conversation_rate_taka"> Taka Purchase </label>
+                                                <label for="point_conversation_rate_taka"> Purchase </label>
                                             </div>
                                         </div>
 
@@ -1829,15 +1849,14 @@ document.addEventListener('DOMContentLoaded', function() {
                                                        } else {
                                                            echo '';
                                                        } ?>><label
-                                                    for="redemption_conversation_rate_taka"> Point(s)= </label><input type="number"
+                                                    for="redemption_conversation_rate_taka"> Point(s)= <?php echo get_woocommerce_currency_symbol() ?> </label><input type="number"
                                                     class="pts-input" id="redemption_conversation_rate_taka"
                                                     name="redemption_conversation_rate_taka"
                                                     value="<?php echo esc_attr($redemption_conversation_rate_taka); ?>" <?php if ($point_redemption == 1) {
                                                            echo 'required';
                                                        } else {
                                                            echo '';
-                                                       } ?>><label
-                                                    for="redemption_conversation_rate_taka"> Taka</label>
+                                                       } ?>>
                                                         </div>
                                                     </div>
 
@@ -1909,12 +1928,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                                     for="referrer_points_box"> Point(s) </label>
                                                         </div>
 
-
-
-
-
-
-
                                                         <div class="left-width-div">
                                                         <label for="ref_user_points_box">Referrered user will get:</label>
                                                         <span class="custom-tooltip" tabindex="0" aria-label="Customer Signup Bonus Points">
@@ -1931,6 +1944,70 @@ document.addEventListener('DOMContentLoaded', function() {
                                                        } ?>><label
                                                     for="ref_user_points_box"> Point(s) </label>
                                                         </div>
+
+                                                        <div class="left-width-div">
+                                                        <label for="min_ref">Minimum Referrals Required</label>
+                                                        <span class="custom-tooltip" tabindex="0" aria-label="Customer Signup Bonus Points">
+                <span class="tooltip-icon">?</span>
+            </span>
+                                                        </div>
+                                                        <div class="right-width-div">
+                                                        <input type="number" class="pts-input" id="min_ref"
+                                                    name="min_ref"
+                                                    value="<?php echo esc_attr($min_ref); ?>" <?php if ($ref_system == 1) {
+                                                           echo 'required';
+                                                       } else {
+                                                           echo '';
+                                                       } ?>>
+                                                        </div>
+                                                        
+                                                        <div class="left-width-div">
+                                                                <label for="ref_purchase">Referral Purchase Point</label>
+                                                                    <span class="custom-tooltip" tabindex="0" aria-label="Toggle this to enable this feature">
+                                                                        <span class="tooltip-icon">?</span>
+                                                                    </span>
+                                                            </div>
+                                                            <div class="right-width-div right-div-ht">
+                                                                <div class="toggle-switch">
+                                                                    <input type="checkbox" class="toggle" id="ref_purchase" name="ref_purchase" <?php echo checked($ref_purchase, 1); ?>>
+                                                                    <label class="toggle-slider" for="ref_purchase"></label>
+                                                                </div>
+                                                            </div>
+
+                                                            <div class="left-width-div">
+                                                                <label for="ref_purchase_type">Referral Purchase Point Type</label>
+                                                                    <span class="custom-tooltip" tabindex="0" aria-label="Toggle this to enable this feature">
+                                                                        <span class="tooltip-icon">?</span>
+                                                                    </span>
+                                                            </div>
+                                                            <div class="right-width-div right-div-ht">
+                                                                <select id="ref_purchase_type" name="ref_purchase_type">
+                                                                    <option value="fixed" <?php selected($ref_purchase_type, 'fixed'); ?>>Fixed</option>
+                                                                    <option value="percent" <?php selected($ref_purchase_type, 'percent'); ?>>Percent</option>
+                                                                </select>
+
+                                                            </div>
+                                                            
+                                                            <div class="left-width-div" id="fixed_point_amount_left">
+                                                                <label for="fixed_point_amount">Fixed Point Amount:</label>
+                                                                <span class="custom-tooltip" tabindex="0" aria-label="Enter the fixed point amount">
+                                                                    <span class="tooltip-icon">?</span>
+                                                                </span>
+                                                            </div>
+                                                            <div class="right-width-div" id="fixed_point_amount_right">
+                                                                <input type="number" id="fixed_point_amount" name="fixed_point_amount" placeholder="Enter fixed point amount" value="<?php echo get_option('fixed_point_amount', ''); ?>" class="pts-input" required><label for="fixed_point_amount"> Point(s)</label>
+                                                            </div>
+
+                                                            <div class="left-width-div" id="percent_point_amount_left">
+                                                                <label for="percent_point_amount">Percent Point Amount:</label>
+                                                                <span class="custom-tooltip" tabindex="0" aria-label="Enter the Percent point amount">
+                                                                    <span class="tooltip-icon">?</span>
+                                                                </span>
+                                                            </div>
+                                                            <div class="right-width-div" id="percent_point_amount_right">
+                                                                <input type="number" id="percent_point_amount" name="percent_point_amount" placeholder="Enter Percent point amount" value="<?php echo $percent_point_amount; ?>" class="pts-input" required>
+                                                                <label for="percent_point_amount"> %</label>
+                                                            </div>
 
                                                     </div>
                                                     <div class="container tbl-group">
@@ -2000,6 +2077,37 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <?php wp_nonce_field('save_point_settings', 'point_settings_nonce'); ?>
                             </form>
                         </div>
+                        <script>
+    jQuery(document).ready(function($) {
+        var refPurchaseType = $('#ref_purchase_type').val();
+        if (refPurchaseType == 'fixed') {
+            $('#fixed_point_amount_left').show();
+            $('#fixed_point_amount_right').show();
+            $('#percent_point_amount_left').hide();
+            $('#percent_point_amount_right').hide();
+        } else {
+            $('#fixed_point_amount_left').hide();
+            $('#fixed_point_amount_right').hide();
+            $('#percent_point_amount_left').show();
+            $('#percent_point_amount_right').show();
+        }
+
+        $('#ref_purchase_type').change(function() {
+            var refPurchaseType = $(this).val();
+            if (refPurchaseType == 'fixed') {
+                $('#fixed_point_amount_left').show();
+                $('#fixed_point_amount_right').show();
+                $('#percent_point_amount_left').hide();
+                $('#percent_point_amount_right').hide();
+            } else {
+                $('#fixed_point_amount_left').hide();
+                $('#fixed_point_amount_right').hide();
+                $('#percent_point_amount_left').show();
+                $('#percent_point_amount_right').show();
+            }
+        });
+    });
+</script>
                         <?php
                         break;
 
