@@ -1843,61 +1843,56 @@ document.addEventListener('DOMContentLoaded', function() {
                                                                 </select>
                                             </div>
 
-                                            <div class="left-width-div">
-    <label for="assign_product_category">Assign Product by Category:</label>
-    <span class="custom-tooltip" tabindex="0" aria-label="Select Product Category">
-        <span class="tooltip-icon">?</span>
-    </span>
-</div>
-<?php 
-// if (is_wp_error($error)) {
-//     wp_die($error->get_error_message());
-// }
- ?>
-<div class="right-width-div">
-    <select id="assign_product_category" name="assign_product_category[]" class="chosen-select" multiple="multiple" data-placeholder="Select categories">
-    <?php
-        $categories = get_terms(array(
-            'taxonomy' => 'product_cat',
-            'hide_empty' => false,
-        ));
-        $saved_categories = get_option('assign_product_category', array());
+                                            <div class="left-width-div" id="assign_product_category_left">
+                                                    <label for="assign_product_category">Assign Product by Category:</label>
+                                                    <span class="custom-tooltip" tabindex="0" aria-label="Select Product Category">
+                                                        <span class="tooltip-icon">?</span>
+                                                    </span>
+                                                </div>
+                                                <?php 
+                                                // if (is_wp_error($error)) {
+                                                //     wp_die($error->get_error_message());
+                                                // }
+                                                ?>
+                                                <div class="right-width-div" id="assign_product_category_right">
+                                                    <select id="assign_product_category" name="assign_product_category[]" class="chosen-select" multiple="multiple" data-placeholder="Select categories">
+                                                    <?php
+                                                        $categories = get_terms(array(
+                                                            'taxonomy' => 'product_cat',
+                                                            'hide_empty' => false,
+                                                        ));
+                                                        $saved_categories = get_option('assign_product_category', array());
 
-        foreach ($categories as $category) {
-            $selected = in_array($category->term_id, $saved_categories) ? 'selected' : '';
-            echo '<option value="'.$category->term_id.'" '.$selected.'>'.$category->name.'</option>';
-        }   
-    ?>
-    </select>
-</div>
+                                                        foreach ($categories as $category) {
+                                                            $selected = in_array($category->term_id, $saved_categories) ? 'selected' : '';
+                                                            echo '<option value="'.$category->term_id.'" '.$selected.'>'.$category->name.'</option>';
+                                                        }   
+                                                    ?>
+                                                    </select>
+                                                </div>
 
-<!-- specific product -->
-<div class="left-width-div">
-    <label for="assign_specific_products">Assign Specific Product:</label>
-    <span class="custom-tooltip" tabindex="0" aria-label="Select Specific Product">
-        <span class="tooltip-icon">?</span>
-    </span>
-</div>
-<div class="right-width-div">
-    <select id="assign_specific_products" name="assign_specific_products[]" class="chosen-select" multiple="multiple" data-placeholder="Select specific products">
-    <?php
-        $products = wc_get_products(array(
-            'status' => 'publish',
-            'limit' => -1,
-        ));
-        $saved_products = get_option('assign_specific_products', array());
-        foreach ($products as $product) {
-            $selected = in_array($product->get_id(), $saved_products) ? 'selected' : '';
-            echo '<option value="'.$product->get_id().'" '.$selected.'>'.$product->get_name().'</option>';
-        }      
-    ?>
-    </select>
-</div>
-
-
-
-
-
+                                                <!-- specific product -->
+                                                <div class="left-width-div" id="assign_specific_products_left">
+                                                    <label for="assign_specific_products">Assign Specific Product:</label>
+                                                    <span class="custom-tooltip" tabindex="0" aria-label="Select Specific Product">
+                                                        <span class="tooltip-icon">?</span>
+                                                    </span>
+                                                </div>
+                                                <div class="right-width-div" id="assign_specific_products_right">
+                                                    <select id="assign_specific_products" name="assign_specific_products[]" class="chosen-select" multiple="multiple" data-placeholder="Select specific products">
+                                                    <?php
+                                                        $products = wc_get_products(array(
+                                                            'status' => 'publish',
+                                                            'limit' => -1,
+                                                        ));
+                                                        $saved_products = get_option('assign_specific_products', array());
+                                                        foreach ($products as $product) {
+                                                            $selected = in_array($product->get_id(), $saved_products) ? 'selected' : '';
+                                                            echo '<option value="'.$product->get_id().'" '.$selected.'>'.$product->get_name().'</option>';
+                                                        }      
+                                                    ?>
+                                                    </select>
+                                                </div>
                                         </div>
 
 
@@ -2199,6 +2194,31 @@ document.addEventListener('DOMContentLoaded', function() {
                 $('#fixed_point_amount').removeAttr('required');
             }
         });
+
+        $('#assign_point_type').on('change', function() {
+    var assign_point_type = $(this).val();
+    console.log(assign_point_type);
+    switch (assign_point_type){
+        case 'all_products':
+            $('#assign_product_category_left').hide();
+            $('#assign_product_category_right').hide();
+            $('#assign_specific_products_left').hide();
+            $('#assign_specific_products_right').hide();
+            break;
+        case 'category':
+            $('#assign_specific_products_left').hide();
+            $('#assign_specific_products_right').hide();
+            $('#assign_product_category_left').show();
+            $('#assign_product_category_right').show();
+            break;
+        case 'specific_products':
+            $('#assign_product_category_left').hide();
+            $('#assign_product_category_right').hide();
+            $('#assign_specific_products_left').show();
+            $('#assign_specific_products_right').show();
+            break;
+    }
+});
     });
 </script>
                         <?php
