@@ -99,3 +99,35 @@ function enqueue_custom_script() {
     ));
 }
 add_action('wp_enqueue_scripts', 'enqueue_custom_script');
+
+// function enqueue_select2_script_admin() {
+//     wp_enqueue_script('select2', 'https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js', array('jquery'), '4.0.13', true);
+//     wp_enqueue_script('custom-category-select', get_stylesheet_directory_uri() . '/reward-point/js/custom-category-select.js', array('jquery', 'select2'), null, true);
+
+//     wp_localize_script('custom-category-select', 'ajax_object', array(
+//         'ajax_url' => admin_url('admin-ajax.php'),
+//         'nonce'    => wp_create_nonce('fetch_categories_nonce') // Same key as in PHP check
+//     ));
+// }
+// add_action('admin_enqueue_scripts', 'enqueue_select2_script_admin');
+
+
+function enqueue_chosen_script_admin() {
+    // Chosen CSS and JS
+    wp_enqueue_style('chosen-css', 'https://cdnjs.cloudflare.com/ajax/libs/chosen/1.8.7/chosen.min.css');
+    wp_enqueue_script('chosen-js', 'https://cdnjs.cloudflare.com/ajax/libs/chosen/1.8.7/chosen.jquery.min.js', array('jquery'), '1.8.7', true);
+
+    // Custom script to initialize Chosen
+    wp_enqueue_script('custom-chosen-select', get_stylesheet_directory_uri() . '/reward-point/js/custom-chosen-select.js', array('jquery', 'chosen-js'), null, true);
+
+    // Pass AJAX URL to JS
+    wp_localize_script('custom-chosen-select', 'ajax_object', array(
+        'ajax_url' => admin_url('admin-ajax.php'),
+        'nonce'    => wp_create_nonce('fetch_categories_nonce') // For nonce verification
+    ));
+}
+add_action('admin_enqueue_scripts', 'enqueue_chosen_script_admin');
+
+
+
+

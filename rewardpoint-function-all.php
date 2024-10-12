@@ -1733,13 +1733,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 $point_massage = isset($_POST['point_massage']) ? 1 : 0; // Ensure it's stored as a boolean
                 // Save the point and reward status, conversation rates, and point redemption to the database or perform any other necessary actions
                 $ref_purchase_type = isset($_POST['ref_purchase_type']) ? sanitize_text_field($_POST['ref_purchase_type']) : 'Fixed';
+                $assign_point_type = isset($_POST['assign_point_type']) ? sanitize_text_field($_POST['assign_point_type']) : 'all_products';
 
                 $referrer_points_box = isset($_POST['referrer_points_box']) ? sanitize_text_field($_POST['referrer_points_box']) : '';
 
                 $fixed_point_amount = isset($_POST['fixed_point_amount']) ? sanitize_text_field($_POST['fixed_point_amount']) : '';
 
                 $percent_point_amount = isset($_POST['percent_point_amount']) ? sanitize_text_field($_POST['percent_point_amount']) : '';
-
+                $selected_categories = isset($_POST['assign_product_category']) ? $_POST['assign_product_category'] : array();
+                $assign_specific_products = isset($_POST['assign_specific_products']) ? $_POST['assign_specific_products'] : array();
                 
                 update_option('point_and_reward', $point_and_reward);
                 update_option('point_conversation_rate_point', $point_conversation_rate_point);
@@ -1760,6 +1762,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 update_option('ref_purchase_type', $ref_purchase_type);
                 update_option('fixed_point_amount', $fixed_point_amount);
                 update_option('percent_point_amount', $percent_point_amount);
+                update_option('assign_point_type', $assign_point_type);
+                update_option('assign_product_category', $selected_categories);
+                update_option('assign_specific_products', $assign_specific_products);
 
                 //echo '<div class="notice notice-success"><p><strong>Point settings saved.</strong></p></div>';
                 echo '<div class="notice notice-success settings-error is-dismissible"><p><strong>Point settings saved.</strong></p></div>';
@@ -1784,6 +1789,10 @@ document.addEventListener('DOMContentLoaded', function() {
             $point_massage = get_option('point_massage', 0);
             $percent_point_amount = get_option('percent_point_amount', 0);
             $ref_purchase_type = get_option('ref_purchase_type', 'Fixed');
+            $assign_point_type = get_option('assign_point_type', 'all_products');
+            $selected_categories = get_option('assign_product_category', null);
+            $assign_specific_products = get_option('assign_specific_products', null);
+
             ?>
 
                         <div id="point-settings" class="wrap">
@@ -1817,6 +1826,78 @@ document.addEventListener('DOMContentLoaded', function() {
                                                     value="<?php echo esc_attr($point_conversation_rate_taka); ?>" class="pts-input" required>
                                                 <label for="point_conversation_rate_taka"> Purchase </label>
                                             </div>
+
+
+
+                                            <div class="left-width-div">
+                                                <label for="assign_point_type">Assign Point type:</label>
+                                                <span class="custom-tooltip" tabindex="0" aria-label="Select Assaign Point Type">
+                <span class="tooltip-icon">?</span>
+            </span>
+                                            </div>
+                                            <div class="right-width-div">
+                                            <select id="assign_point_type" name="assign_point_type">
+                                                                    <option value="all_products" <?php selected($assign_point_type, 'all_products'); ?>>All Products</option>
+                                                                    <option value="category" <?php selected($assign_point_type, 'category'); ?>>By Category</option>
+                                                                    <option value="specific_products" <?php selected($assign_point_type, 'specific_products'); ?>>Specific Products</option>
+                                                                </select>
+                                            </div>
+
+                                            <div class="left-width-div">
+    <label for="assign_product_category">Assign Product by Category:</label>
+    <span class="custom-tooltip" tabindex="0" aria-label="Select Product Category">
+        <span class="tooltip-icon">?</span>
+    </span>
+</div>
+<?php 
+// if (is_wp_error($error)) {
+//     wp_die($error->get_error_message());
+// }
+ ?>
+<div class="right-width-div">
+    <select id="assign_product_category" name="assign_product_category[]" class="chosen-select" multiple="multiple" data-placeholder="Select categories">
+    <?php
+        $categories = get_terms(array(
+            'taxonomy' => 'product_cat',
+            'hide_empty' => false,
+        ));
+        $saved_categories = get_option('assign_product_category', array());
+
+        foreach ($categories as $category) {
+            $selected = in_array($category->term_id, $saved_categories) ? 'selected' : '';
+            echo '<option value="'.$category->term_id.'" '.$selected.'>'.$category->name.'</option>';
+        }   
+    ?>
+    </select>
+</div>
+
+<!-- specific product -->
+<div class="left-width-div">
+    <label for="assign_specific_products">Assign Specific Product:</label>
+    <span class="custom-tooltip" tabindex="0" aria-label="Select Specific Product">
+        <span class="tooltip-icon">?</span>
+    </span>
+</div>
+<div class="right-width-div">
+    <select id="assign_specific_products" name="assign_specific_products[]" class="chosen-select" multiple="multiple" data-placeholder="Select specific products">
+    <?php
+        $products = wc_get_products(array(
+            'status' => 'publish',
+            'limit' => -1,
+        ));
+        $saved_products = get_option('assign_specific_products', array());
+        foreach ($products as $product) {
+            $selected = in_array($product->get_id(), $saved_products) ? 'selected' : '';
+            echo '<option value="'.$product->get_id().'" '.$selected.'>'.$product->get_name().'</option>';
+        }      
+    ?>
+    </select>
+</div>
+
+
+
+
+
                                         </div>
 
 
@@ -2085,11 +2166,17 @@ document.addEventListener('DOMContentLoaded', function() {
             $('#fixed_point_amount_right').show();
             $('#percent_point_amount_left').hide();
             $('#percent_point_amount_right').hide();
+            $('#percent_point_amount').val('');
+            $('#fixed_point_amount').attr('required', 'required');
+            $('#percent_point_amount').removeAttr('required');
         } else {
             $('#fixed_point_amount_left').hide();
             $('#fixed_point_amount_right').hide();
+            $('#fixed_point_amount').val('');
             $('#percent_point_amount_left').show();
             $('#percent_point_amount_right').show();
+            $('#percent_point_amount').attr('required', 'required');
+            $('#fixed_point_amount').removeAttr('required');
         }
 
         $('#ref_purchase_type').change(function() {
@@ -2099,16 +2186,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 $('#fixed_point_amount_right').show();
                 $('#percent_point_amount_left').hide();
                 $('#percent_point_amount_right').hide();
+                $('#percent_point_amount').val('');
+                $('#fixed_point_amount').attr('required', 'required');
+                $('#percent_point_amount').removeAttr('required');
             } else {
                 $('#fixed_point_amount_left').hide();
                 $('#fixed_point_amount_right').hide();
+                $('#fixed_point_amount').val('');
                 $('#percent_point_amount_left').show();
                 $('#percent_point_amount_right').show();
+                $('#percent_point_amount').attr('required', 'required');
+                $('#fixed_point_amount').removeAttr('required');
             }
         });
     });
 </script>
                         <?php
+
+
                         break;
 
     }
