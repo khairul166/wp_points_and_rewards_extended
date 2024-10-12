@@ -1742,6 +1742,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 $percent_point_amount = isset($_POST['percent_point_amount']) ? sanitize_text_field($_POST['percent_point_amount']) : '';
                 $selected_categories = isset($_POST['assign_product_category']) ? $_POST['assign_product_category'] : array();
                 $assign_specific_products = isset($_POST['assign_specific_products']) ? $_POST['assign_specific_products'] : array();
+                $exclude_specific_products = isset($_POST['exclude_specific_products']) ? $_POST['exclude_specific_products'] : array();
                 
                 update_option('point_and_reward', $point_and_reward);
                 update_option('point_conversation_rate_point', $point_conversation_rate_point);
@@ -1765,6 +1766,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 update_option('assign_point_type', $assign_point_type);
                 update_option('assign_product_category', $selected_categories);
                 update_option('assign_specific_products', $assign_specific_products);
+                update_option('exclude_specific_products', $exclude_specific_products);
 
                 //echo '<div class="notice notice-success"><p><strong>Point settings saved.</strong></p></div>';
                 echo '<div class="notice notice-success settings-error is-dismissible"><p><strong>Point settings saved.</strong></p></div>';
@@ -1792,6 +1794,7 @@ document.addEventListener('DOMContentLoaded', function() {
             $assign_point_type = get_option('assign_point_type', 'all_products');
             $selected_categories = get_option('assign_product_category', null);
             $assign_specific_products = get_option('assign_specific_products', null);
+            $exclude_specific_products = get_option('exclude_specific_products', null);
 
             ?>
 
@@ -1867,6 +1870,29 @@ document.addEventListener('DOMContentLoaded', function() {
                                                             $selected = in_array($category->term_id, $saved_categories) ? 'selected' : '';
                                                             echo '<option value="'.$category->term_id.'" '.$selected.'>'.$category->name.'</option>';
                                                         }   
+                                                    ?>
+                                                    </select>
+                                                </div>
+
+                                                <!-- exclude specific Products -->
+                                                <div class="left-width-div" id="exclude_specific_products_left">
+                                                    <label for="exclude_specific_products">Exclude Specific Product:</label>
+                                                    <span class="custom-tooltip" tabindex="0" aria-label="Exclude Specific Product">
+                                                        <span class="tooltip-icon">?</span>
+                                                    </span>
+                                                </div>
+                                                <div class="right-width-div" id="exclude_specific_products_right">
+                                                    <select id="exclude_specific_products" name="exclude_specific_products[]" class="chosen-select" multiple="multiple" data-placeholder="Select specific products">
+                                                    <?php
+                                                        $products = wc_get_products(array(
+                                                            'status' => 'publish',
+                                                            'limit' => -1,
+                                                        ));
+                                                        $saved_products = get_option('exclude_specific_products', array());
+                                                        foreach ($products as $product) {
+                                                            $selected = in_array($product->get_id(), $saved_products) ? 'selected' : '';
+                                                            echo '<option value="'.$product->get_id().'" '.$selected.'>'.$product->get_name().'</option>';
+                                                        }      
                                                     ?>
                                                     </select>
                                                 </div>
@@ -2195,30 +2221,40 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        $('#assign_point_type').on('change', function() {
-    var assign_point_type = $(this).val();
-    console.log(assign_point_type);
+
+        function toggleAssignPointType() {
+            var assign_point_type = $('#assign_point_type').val();
     switch (assign_point_type){
         case 'all_products':
             $('#assign_product_category_left').hide();
             $('#assign_product_category_right').hide();
             $('#assign_specific_products_left').hide();
             $('#assign_specific_products_right').hide();
+            $('#exclude_specific_products_left').hide();
+            $('#exclude_specific_products_right').hide();
             break;
         case 'category':
             $('#assign_specific_products_left').hide();
             $('#assign_specific_products_right').hide();
             $('#assign_product_category_left').show();
             $('#assign_product_category_right').show();
+            $('#exclude_specific_products_left').show();
+            $('#exclude_specific_products_right').show();
             break;
         case 'specific_products':
             $('#assign_product_category_left').hide();
             $('#assign_product_category_right').hide();
+            $('#exclude_specific_products_left').hide();
+            $('#exclude_specific_products_right').hide();
             $('#assign_specific_products_left').show();
             $('#assign_specific_products_right').show();
             break;
     }
-});
+        }
+        toggleAssignPointType();
+        $('#assign_point_type').on('change', toggleAssignPointType);
+
+       
     });
 </script>
                         <?php
