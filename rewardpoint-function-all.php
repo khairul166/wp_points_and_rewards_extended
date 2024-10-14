@@ -2819,6 +2819,40 @@ function display_product_points_earned($atts)
 
     // Check if the product exists and is purchasable
     if ($product && $product->is_purchasable()) {
+        // Get the assign point type
+        $assign_point_type = get_option('assign_point_type', 'all_products');
+
+        // Check if the product is excluded
+        $excluded_products = get_option('exclude_specific_products', array());
+        if (in_array($product_id, $excluded_products)) {
+            return ''; // Return empty string if the product is excluded
+        }
+
+        // If assign point type is not 'all_products', perform checks
+        if ($assign_point_type != 'all_products') {
+            if ($assign_point_type == 'category') {
+                // Check if the product belongs to the selected category
+                $categories = get_option('assign_product_category', array());
+                $product_categories = wp_get_post_terms($product_id, 'product_cat');
+                $category_match = false;
+                foreach ($product_categories as $category) {
+                    if (in_array($category->term_id, $categories)) {
+                        $category_match = true;
+                        break;
+                    }
+                }
+                if (!$category_match) {
+                    return ''; // Return empty string if the product does not belong to the selected category
+                }
+            } elseif ($assign_point_type == 'specific_products') {
+                // Check if the product is a specific product
+                $specific_products = get_option('assign_specific_products', array());
+                if (!in_array($product_id, $specific_products)) {
+                    return ''; // Return empty string if the product is not a specific product
+                }
+            }
+        }
+
         // Retrieve the product price
         $product_price = $product->get_price();
 
@@ -2828,7 +2862,7 @@ function display_product_points_earned($atts)
         $points_earned = round(($product_price * $point_conversation_rate_point) / $point_conversation_rate_taka);
 
         // Prepare the HTML output
-        $output = '<p class="woocommerce-noreviews">You will earn ' . esc_html($points_earned) . ' on every Product. </p>';
+        $output = '<p class="woocommerce-noreviews">You will earn ' . esc_html($points_earned) . ' on this product. </p>';
 
         return $output;
     }
