@@ -3255,26 +3255,55 @@ if ($point_and_reward) {
 
 
 add_filter('woocommerce_get_order_item_totals', 'add_custom_order_totals_row', 30, 3);
-function add_custom_order_totals_row($points_total, $order, $tax_display)
-{
-
+function add_custom_order_totals_row($points_total, $order, $tax_display) {
     $point_conversation_rate_point = get_option('point_conversation_rate_point', '');
     $point_conversation_rate_taka = get_option('point_conversation_rate_taka', '');
-    $points = round(($order->get_total() * floatval($point_conversation_rate_point)) / floatval($point_conversation_rate_taka));
-    if ($points > 1) {
-        $points_earned = round(($order->get_total() * floatval($point_conversation_rate_point)) / floatval($point_conversation_rate_taka)) . ' Points';
-    } else {
-        $points_earned = round(($order->get_total() * floatval($point_conversation_rate_point)) / floatval($point_conversation_rate_taka)) . ' Point';
-    }
-    $point_and_reward = get_option('point_and_reward', 0);
-    if ($point_and_reward) {
-        // Insert a new row
-        $points_total['recurr_not'] = array(
-            'label' => __('Points will Earn:', 'woocommerce'),
-            'value' => $points_earned,
-        );
+    
+    // Get the assign point type
+    $assign_point_type = get_option('assign_point_type', 'all_products');
+    
+    // Initialize points variable
+    $points = 0;
 
+    // Check the assigned point type and calculate points accordingly
+    switch ($assign_point_type) {
+        case 'all_products':
+            // Calculate points for all products
+            $points = round(($order->get_total() * floatval($point_conversation_rate_point)) / floatval($point_conversation_rate_taka));
+            break;
+
+        case 'category':
+            // Calculate points based on assigned categories
+            // You may need to implement your logic to check if any products belong to the assigned categories
+            $categories = get_option('assign_product_category', array());
+            foreach ($order->get_items() as $item) {
+                $product_id = $item->get_product_id();
+                $product_categories = wp_get_post_terms($product_id, 'product_cat', array('fields' => 'ids'));
+                if (array_intersect($categories, $product_categories)) {
+                    $points += round(($item->get_total() * floatval($point_conversation_rate_point)) / floatval($point_conversation_rate_taka));
+                }
+            }
+            break;
+
+        case 'specific_products':
+            // Calculate points based on specific products
+            $specific_products = get_option('assign_specific_products', array());
+            foreach ($order->get_items() as $item) {
+                if (in_array($item->get_product_id(), $specific_products)) {
+                    $points += round(($item->get_total() * floatval($point_conversation_rate_point)) / floatval($point_conversation_rate_taka));
+                }
+            }
+            break;
     }
+
+    // Only display points if greater than 0
+    if ($points > 0) {
+        $points_total['points_earned'] = array(
+            'label' => __('Points will Earn:', 'your-theme-textdomain'),
+            'value' => esc_html($points) . ' Points',
+        );
+    }
+
     return $points_total;
 }
 
@@ -3614,10 +3643,41 @@ function modify_thankyou_order_received_text($text, $order)
         $point_conversation_rate_point = get_option('point_conversation_rate_point', '');
         $point_conversation_rate_taka = get_option('point_conversation_rate_taka', '');
 
+        // Get the assign point type
+    $assign_point_type = get_option('assign_point_type', 'all_products');
         // Calculate the points earned based on the cart total and conversion rates
-        $points_earned = round(($cart_total * floatval($point_conversation_rate_point)) / floatval($point_conversation_rate_taka));
+        $points_earned = 0;
+         // Check the assigned point type and calculate points accordingly
+    switch ($assign_point_type) {
+        case 'all_products':
+            // Calculate points for all products
+            $points_earned = round(($order->get_total() * floatval($point_conversation_rate_point)) / floatval($point_conversation_rate_taka));
+            break;
+
+        case 'category':
+            // Calculate points based on assigned categories
+            $categories = get_option('assign_product_category', array());
+            foreach ($order->get_items() as $item) {
+                $product_id = $item->get_product_id();
+                $product_categories = wp_get_post_terms($product_id, 'product_cat', array('fields' => 'ids'));
+                if (array_intersect($categories, $product_categories)) {
+                    $points_earned += round(($item->get_total() * floatval($point_conversation_rate_point)) / floatval($point_conversation_rate_taka));
+                }
+            }
+            break;
+
+        case 'specific_products':
+            // Calculate points based on specific products
+            $specific_products = get_option('assign_specific_products', array());
+            foreach ($order->get_items() as $item) {
+                if (in_array($item->get_product_id(), $specific_products)) {
+                    $points_earned += round(($item->get_total() * floatval($point_conversation_rate_point)) / floatval($point_conversation_rate_taka));
+                }
+            }
+            break;
+    }
         // Customize the thank you text here
-        if($points_earned===0){
+        if($points_earned>0){
             $modified_text = 'Thank you. Your order has been received. You will earn <strong>' . $points_earned . '</strong> points after Completing this order.';
         }else{
             $modified_text = 'Thank you. Your order has been received.'; 
